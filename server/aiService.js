@@ -1,17 +1,29 @@
 // Load environment variables
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const OpenAI = require('openai');
 
 // Initialize OpenAI with API key
-const apiKey = process.env.OPENAI_API_KEY;
+let apiKey = process.env.OPENAI_API_KEY;
+
+// If key is not found, try to reload from .env file
+if (!apiKey) {
+  const fs = require('fs');
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const keyMatch = envContent.match(/OPENAI_API_KEY\s*=\s*(.+)/);
+    if (keyMatch) {
+      apiKey = keyMatch[1].trim().replace(/^["']|["']$/g, '');
+      process.env.OPENAI_API_KEY = apiKey;
+    }
+  }
+}
+
 const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
-if (apiKey) {
-  console.log('✅ OpenAI client initialized with API key');
-} else {
-  console.warn('⚠️  OpenAI API key not found. AI features will use fallback methods.');
-}
+
 
 // Generate embeddings for text
 async function generateEmbedding(text) {

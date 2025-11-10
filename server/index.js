@@ -1,5 +1,6 @@
 // Load environment variables from .env file
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -11,11 +12,38 @@ app.use(cors());
 app.use(express.json());
 
 // Log API key status (without exposing the key)
+const fs = require('fs');
+const envPath = path.join(__dirname, '.env');
+const envExists = fs.existsSync(envPath);
+
+if (envExists) {
+  console.log(`✅ Found .env file at: ${envPath}`);
+} else {
+  console.warn(`⚠️  .env file not found at: ${envPath}`);
+  console.warn('   Creating .env file template...');
+}
+
 if (process.env.OPENAI_API_KEY) {
   console.log('✅ OpenAI API key is configured');
+  console.log(`   Key length: ${process.env.OPENAI_API_KEY.length} characters`);
 } else {
   console.warn('⚠️  OpenAI API key not found. AI features will use fallback methods.');
-  console.warn('   To enable full AI features, set OPENAI_API_KEY in your .env file or environment variables.');
+  console.warn('   To enable full AI features, set OPENAI_API_KEY in your .env file:');
+  console.warn(`   Location: ${envPath}`);
+  console.warn('   Format: OPENAI_API_KEY=sk-...');
+  
+  // Try to reload from .env if it exists
+  if (envExists) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const keyMatch = envContent.match(/OPENAI_API_KEY\s*=\s*(.+)/);
+    if (keyMatch) {
+      const keyValue = keyMatch[1].trim().replace(/^["']|["']$/g, '');
+      if (keyValue && keyValue !== '') {
+        process.env.OPENAI_API_KEY = keyValue;
+        console.log('✅ OpenAI API key loaded from .env file');
+      }
+    }
+  }
 }
 
 // Initialize Firebase Admin
