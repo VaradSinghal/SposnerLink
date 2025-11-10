@@ -172,6 +172,118 @@ export const Events = {
   }
 };
 
+// Posts Collection
+export const postsCollection = collection(db, 'posts');
+
+export const Posts = {
+  async findById(id) {
+    const docRef = doc(db, 'posts', id);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    const data = docSnap.data();
+    return { id: docSnap.id, ...data, createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };
+  },
+
+  async find(filters = {}) {
+    try {
+      let q = query(postsCollection);
+      
+      if (filters.userId) {
+        q = query(q, where('userId', '==', filters.userId));
+      }
+      if (filters.type) {
+        q = query(q, where('type', '==', filters.type));
+      }
+
+      try {
+        q = query(q, orderBy('createdAt', 'desc'));
+      } catch (e) {
+        console.warn('Could not order by createdAt, index may be needed');
+      }
+      
+      if (filters.limit) {
+        q = query(q, limit(filters.limit));
+      }
+
+      const snapshot = await getDocs(q);
+      let results = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return { id: docSnap.id, ...data, createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };
+      });
+      
+      if (results.length > 0 && results[0].createdAt) {
+        results.sort((a, b) => {
+          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bDate - aDate;
+        });
+      }
+      
+      return results;
+    } catch (error) {
+      console.error('Error finding posts:', error);
+      return [];
+    }
+  },
+
+  async create(data) {
+    const postData = {
+      ...data,
+      likes: [],
+      comments: [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    const docRef = await addDoc(postsCollection, postData);
+    const createdDoc = await getDoc(docRef);
+    const createdData = createdDoc.data();
+    return { id: docRef.id, ...createdData, createdAt: toDate(createdData.createdAt), updatedAt: toDate(createdData.updatedAt) };
+  },
+
+  async update(id, data) {
+    const docRef = doc(db, 'posts', id);
+    const updateData = {
+      ...data,
+      updatedAt: serverTimestamp()
+    };
+    await updateDoc(docRef, updateData);
+    return this.findById(id);
+  },
+
+  async delete(id) {
+    const docRef = doc(db, 'posts', id);
+    await deleteDoc(docRef);
+  },
+
+  async likePost(postId, userId) {
+    const post = await this.findById(postId);
+    if (!post) throw new Error('Post not found');
+    
+    const likes = post.likes || [];
+    const isLiked = likes.includes(userId);
+    
+    const updatedLikes = isLiked 
+      ? likes.filter(id => id !== userId)
+      : [...likes, userId];
+    
+    return this.update(postId, { likes: updatedLikes });
+  },
+
+  async addComment(postId, comment) {
+    const post = await this.findById(postId);
+    if (!post) throw new Error('Post not found');
+    
+    const comments = post.comments || [];
+    const newComment = {
+      ...comment,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    
+    return this.update(postId, { comments: [...comments, newComment] });
+  }
+};
+
 // Brands Collection
 export const brandsCollection = collection(db, 'brands');
 

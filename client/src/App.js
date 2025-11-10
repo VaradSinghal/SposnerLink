@@ -16,6 +16,7 @@ import BrandProfile from './pages/BrandProfile';
 import Matches from './pages/Matches';
 import Proposals from './pages/Proposals';
 import Analytics from './pages/Analytics';
+import Feed from './pages/Feed';
 import PrivateRoute from './components/PrivateRoute';
 import Chatbot from './components/Chatbot';
 import PageTransition from './components/PageTransition';
@@ -208,6 +209,16 @@ function App() {
                 <PrivateRoute>
                   <PageTransition>
                     <Analytics />
+                  </PageTransition>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/feed"
+              element={
+                <PrivateRoute>
+                  <PageTransition>
+                    <Feed />
                   </PageTransition>
                 </PrivateRoute>
               }

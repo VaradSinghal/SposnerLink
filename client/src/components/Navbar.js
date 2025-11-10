@@ -25,6 +25,7 @@ import {
   Logout,
   Settings,
   AutoAwesome as AutoAwesomeIcon,
+  Feed as FeedIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -96,6 +97,25 @@ const Navbar = () => {
               }}
             >
               Dashboard
+            </Button>
+            
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to="/feed"
+              startIcon={<FeedIcon />}
+              sx={{ 
+                textTransform: 'none',
+                borderRadius: 2,
+                px: 2,
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  transform: 'translateY(-2px)',
+                }
+              }}
+            >
+              Feed
             </Button>
             
             {(user?.userType || 'organizer') === 'organizer' ? (

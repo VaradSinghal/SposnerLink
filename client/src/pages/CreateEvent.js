@@ -19,7 +19,6 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { Events } from '../services/firestoreService';
-import { findMatchesForEvent } from '../services/apiService';
 import EventIcon from '@mui/icons-material/Event';
 import { Grow, Fade, Skeleton } from '@mui/material';
 import { FormSkeleton } from '../components/SkeletonLoader';
@@ -229,15 +228,6 @@ const CreateEvent = () => {
       
       setSuccess(true);
       
-      // Automatically find matches after creating event
-      try {
-        await findMatchesForEvent(event.id);
-        console.log('Found matches for event:', event.id);
-      } catch (matchError) {
-        console.error('Error finding matches:', matchError);
-        // Continue even if matching fails
-      }
-
       // Navigate to events page to see the created event
       setTimeout(() => {
         navigate('/events');
@@ -796,7 +786,7 @@ const CreateEvent = () => {
                   borderRadius: 2,
                 }}
               >
-                {loading ? 'Creating...' : 'Create Event & Find Matches'}
+                {loading ? 'Creating...' : 'Create Event'}
               </Button>
             ) : (
               <Button

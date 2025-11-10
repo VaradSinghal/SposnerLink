@@ -54,18 +54,10 @@ const EventsPage = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const userType = user?.userType || 'organizer';
-      console.log('Events - Fetching events for userType:', userType, 'userId:', user?.id);
-      
-      if (userType === 'organizer') {
-        const eventsData = await Events.find({ organizerId: user.id });
-        console.log('Events - Found events for organizer:', eventsData.length);
-        setEvents(eventsData || []);
-      } else {
-        const eventsData = await Events.find({ status: 'active' });
-        console.log('Events - Found active events:', eventsData.length);
-        setEvents(eventsData || []);
-      }
+      // Fetch all events from the database
+      const eventsData = await Events.find();
+      console.log('Events - Found all events:', eventsData.length);
+      setEvents(eventsData || []);
     } catch (error) {
       setError('Failed to fetch events');
       console.error('Error fetching events:', error);
