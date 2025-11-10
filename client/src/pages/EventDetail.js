@@ -15,7 +15,7 @@ import {
   Divider,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { Events } from '../services/firestoreService';
+import { Events, Matches, Brands } from '../services/firestoreService';
 import { findMatchesForEvent } from '../services/apiService';
 import { format } from 'date-fns';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -29,12 +29,17 @@ const EventDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [findingMatches, setFindingMatches] = useState(false);
+  const [existingMatch, setExistingMatch] = useState(null);
+  const [checkingMatch, setCheckingMatch] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchEvent();
+      if (user?.userType === 'brand') {
+        checkExistingMatch();
+      }
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchEvent = async () => {
     try {
@@ -50,6 +55,22 @@ const EventDetail = () => {
       console.error('Error fetching event:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkExistingMatch = async () => {
+    if (!user?.id || !id) return;
+    try {
+      setCheckingMatch(true);
+      const brand = await Brands.findByUserId(user.id);
+      if (brand) {
+        const match = await Matches.findByEventAndBrand(id, brand.id);
+        setExistingMatch(match);
+      }
+    } catch (error) {
+      console.error('Error checking match:', error);
+    } finally {
+      setCheckingMatch(false);
     }
   };
 
@@ -70,6 +91,10 @@ const EventDetail = () => {
     } finally {
       setFindingMatches(false);
     }
+  };
+
+  const handleViewMatches = () => {
+    navigate('/matches');
   };
 
   if (loading) {
@@ -152,6 +177,29 @@ const EventDetail = () => {
             }}
           >
             {findingMatches ? 'Finding Matches...' : 'Find Sponsors'}
+          </Button>
+        )}
+        {user?.userType === 'brand' && existingMatch && (
+          <Button
+            variant="outlined"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={handleViewMatches}
+            sx={{ 
+              textTransform: 'none', 
+              borderRadius: 2,
+              px: 3,
+              py: 1.5,
+              borderColor: '#667eea',
+              color: '#667eea',
+              '&:hover': {
+                borderColor: '#5a6fd8',
+                background: 'rgba(102, 126, 234, 0.05)',
+                transform: 'translateY(-2px)',
+              },
+              transition: 'all 0.3s ease',
+            }}
+          >
+            View Match Details
           </Button>
         )}
       </Box>

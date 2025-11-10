@@ -251,6 +251,23 @@ const ProposalsPage = () => {
                   >
                     View Details
                   </Button>
+                  {user?.userType === 'organizer' && proposal.status === 'draft' && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => handleViewProposal(proposal)}
+                      sx={{ 
+                        textTransform: 'none', 
+                        borderRadius: 2,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                        },
+                      }}
+                    >
+                      Review & Send
+                    </Button>
+                  )}
                   {user?.userType === 'brand' && proposal.status === 'sent' && (
                     <>
                       <Button
@@ -258,7 +275,13 @@ const ProposalsPage = () => {
                         color="success"
                         variant="contained"
                         onClick={() => handleUpdateStatus(proposal.id, 'accepted')}
-                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                        sx={{ 
+                          textTransform: 'none', 
+                          borderRadius: 2,
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                          },
+                        }}
                       >
                         Accept
                       </Button>
@@ -267,11 +290,33 @@ const ProposalsPage = () => {
                         color="error"
                         variant="outlined"
                         onClick={() => handleUpdateStatus(proposal.id, 'declined')}
-                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                        sx={{ 
+                          textTransform: 'none', 
+                          borderRadius: 2,
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                          },
+                        }}
                       >
                         Decline
                       </Button>
                     </>
+                  )}
+                  {proposal.status === 'accepted' && (
+                    <Chip 
+                      label="Accepted" 
+                      color="success" 
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                  {proposal.status === 'declined' && (
+                    <Chip 
+                      label="Declined" 
+                      color="error" 
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
                   )}
                 </CardActions>
               </Card>
@@ -299,8 +344,15 @@ const ProposalsPage = () => {
         <DialogContent>
           {selectedProposal && (
             <Box>
+              {selectedProposal.content?.subject && (
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  {selectedProposal.content.subject}
+                </Typography>
+              )}
               <Typography variant="body2" paragraph sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>
-                {selectedProposal.content?.body}
+                {typeof selectedProposal.content === 'string' 
+                  ? selectedProposal.content 
+                  : selectedProposal.content?.body || selectedProposal.content || 'No content available'}
               </Typography>
               {selectedProposal.content?.pitchDeck?.sections?.map((section, idx) => (
                 <Box key={idx} sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
@@ -312,6 +364,28 @@ const ProposalsPage = () => {
                   </Typography>
                 </Box>
               ))}
+              {user?.userType === 'organizer' && (
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    <strong>Status:</strong> {selectedProposal.status || 'draft'}
+                  </Typography>
+                  {selectedProposal.sentAt && (
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Sent:</strong> {format(new Date(selectedProposal.sentAt), 'MMM dd, yyyy • h:mm a')}
+                    </Typography>
+                  )}
+                  {selectedProposal.viewedAt && (
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Viewed:</strong> {format(new Date(selectedProposal.viewedAt), 'MMM dd, yyyy • h:mm a')}
+                    </Typography>
+                  )}
+                  {selectedProposal.respondedAt && (
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Responded:</strong> {format(new Date(selectedProposal.respondedAt), 'MMM dd, yyyy • h:mm a')}
+                    </Typography>
+                  )}
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
@@ -322,6 +396,33 @@ const ProposalsPage = () => {
           >
             Close
           </Button>
+          {user?.userType === 'organizer' && selectedProposal?.status === 'draft' && (
+            <Button
+              variant="contained"
+              onClick={async () => {
+                try {
+                  await Proposals.update(selectedProposal.id, {
+                    status: 'sent',
+                    sentAt: new Date()
+                  });
+                  if (selectedProposal?.matchId) {
+                    await Matches.update(selectedProposal.matchId, { status: 'proposal_sent' });
+                  }
+                  setDialogOpen(false);
+                  fetchProposals();
+                } catch (error) {
+                  console.error('Error sending proposal:', error);
+                }
+              }}
+              sx={{ 
+                textTransform: 'none', 
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              }}
+            >
+              Send Proposal
+            </Button>
+          )}
           {user?.userType === 'brand' && selectedProposal?.status === 'sent' && (
             <>
               <Button

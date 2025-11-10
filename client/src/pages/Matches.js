@@ -34,6 +34,7 @@ const MatchesPage = () => {
   const [generatingProposal, setGeneratingProposal] = useState(null);
   const [proposalDialog, setProposalDialog] = useState({ open: false, proposal: null });
   const [findingMatches, setFindingMatches] = useState(false);
+  const [hasEvents, setHasEvents] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -45,6 +46,7 @@ const MatchesPage = () => {
     try {
       if (user?.userType === 'organizer') {
         const events = await Events.find({ organizerId: user.id });
+        setHasEvents(events.length > 0);
         const eventIds = events.map(e => e.id);
         
         let allMatches = [];
@@ -240,17 +242,22 @@ const MatchesPage = () => {
               : 'Find events that align with your marketing goals'}
           </Typography>
         </Box>
-        {user?.userType === 'brand' && (
-          <Button
-            variant="contained"
-            onClick={handleFindMatches}
-            disabled={findingMatches}
-            startIcon={<AutoAwesomeIcon />}
-            sx={{ textTransform: 'none', borderRadius: 2 }}
-          >
-            {findingMatches ? 'Finding Matches...' : 'Find New Matches'}
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          onClick={handleFindMatches}
+          disabled={findingMatches}
+          startIcon={<AutoAwesomeIcon />}
+          sx={{ 
+            textTransform: 'none', 
+            borderRadius: 2,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+            },
+          }}
+        >
+          {findingMatches ? 'Finding Matches...' : 'Find New Matches'}
+        </Button>
       </Box>
 
       {error && (
@@ -266,18 +273,49 @@ const MatchesPage = () => {
             No matches yet
           </Typography>
           <Typography variant="body2" color="text.secondary" paragraph>
-            {user?.userType === 'organizer'
-              ? 'Create an event to find matching sponsors!'
-              : 'Complete your profile and find matching events!'}
+            {user?.userType === 'organizer' ? (
+              hasEvents 
+                ? 'Click "Find New Matches" above to discover brands that match your events!'
+                : 'Create an event first, then find matching sponsors!'
+            ) : (
+              'Complete your profile and find matching events!'
+            )}
           </Typography>
-          {user?.userType === 'organizer' && (
+          {user?.userType === 'organizer' && !hasEvents && (
             <Button
               variant="contained"
               component={Link}
               to="/events/create"
-              sx={{ mt: 2, textTransform: 'none', borderRadius: 2 }}
+              sx={{ 
+                mt: 2, 
+                textTransform: 'none', 
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                },
+              }}
             >
               Create Your First Event
+            </Button>
+          )}
+          {user?.userType === 'organizer' && hasEvents && (
+            <Button
+              variant="contained"
+              onClick={handleFindMatches}
+              disabled={findingMatches}
+              startIcon={<AutoAwesomeIcon />}
+              sx={{ 
+                mt: 2, 
+                textTransform: 'none', 
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                },
+              }}
+            >
+              {findingMatches ? 'Finding Matches...' : 'Find New Matches'}
             </Button>
           )}
         </Paper>
@@ -388,39 +426,83 @@ const MatchesPage = () => {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ p: 2, pt: 0 }}>
-                  {user?.userType === 'organizer' && match.status === 'pending' && (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<AutoAwesomeIcon />}
-                      onClick={() => handleGenerateProposal(match.id)}
-                      disabled={generatingProposal === match.id}
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
-                    >
-                      {generatingProposal === match.id ? 'Generating...' : 'Generate Proposal'}
-                    </Button>
-                  )}
-                  {user?.userType === 'organizer' && match.proposalId && (
-                    <Button 
-                      size="small" 
-                      component={Link} 
-                      to={`/proposals`}
-                      variant="outlined"
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
-                    >
-                      View Proposal
-                    </Button>
+                  {user?.userType === 'organizer' && (
+                    <>
+                      {match.status === 'pending' && !match.proposalId && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<AutoAwesomeIcon />}
+                          onClick={() => handleGenerateProposal(match.id)}
+                          disabled={generatingProposal === match.id}
+                          sx={{ 
+                            textTransform: 'none', 
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            '&:hover': {
+                              background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                            },
+                          }}
+                        >
+                          {generatingProposal === match.id ? 'Generating...' : 'Generate Proposal'}
+                        </Button>
+                      )}
+                      {match.proposalId && (
+                        <Button 
+                          size="small" 
+                          component={Link} 
+                          to={`/proposals`}
+                          variant="outlined"
+                          sx={{ textTransform: 'none', borderRadius: 2 }}
+                        >
+                          View Proposal
+                        </Button>
+                      )}
+                      {match.status === 'proposal_sent' && (
+                        <Chip 
+                          label="Proposal Sent" 
+                          color="info" 
+                          size="small"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </>
                   )}
                   {user?.userType === 'brand' && (
-                    <Button
-                      size="small"
-                      component={Link}
-                      to={`/events/${match.eventId}`}
-                      variant="contained"
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
-                    >
-                      View Event Details
-                    </Button>
+                    <>
+                      <Button
+                        size="small"
+                        component={Link}
+                        to={`/events/${match.eventId}`}
+                        variant="contained"
+                        sx={{ 
+                          textTransform: 'none', 
+                          borderRadius: 2,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                          },
+                        }}
+                      >
+                        View Event Details
+                      </Button>
+                      {match.status === 'pending' && (
+                        <Chip 
+                          label="Pending Response" 
+                          color="warning" 
+                          size="small"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                      {match.status === 'proposal_sent' && (
+                        <Chip 
+                          label="Proposal Received" 
+                          color="info" 
+                          size="small"
+                          sx={{ ml: 1 }}
+                        />
+                      )}
+                    </>
                   )}
                 </CardActions>
               </Card>

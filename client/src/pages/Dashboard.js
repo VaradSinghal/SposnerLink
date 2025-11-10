@@ -9,6 +9,7 @@ import {
   Button,
   CircularProgress,
   Paper,
+  Chip
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -301,57 +302,200 @@ const Dashboard = () => {
                 </Card>
               </Grow>
             </Grid>
-            <Grid item xs={12}>
-              <Paper elevation={3} sx={{ p: 3, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
-                      Quick Actions
+            <Grid item xs={12} sm={6} md={3}>
+              <Grow in timeout={700}>
+                <Card sx={{ 
+                  height: '100%', 
+                  background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(250, 112, 154, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Total Proposals
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Create a new event or view your matches
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.totalProposals || 0}
                     </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      component={Link}
-                      to="/events/create"
-                      startIcon={<EventIcon />}
-                      size="large"
-                      sx={{ 
-                        textTransform: 'none', 
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
-                        },
-                      }}
-                    >
-                      Create Event
-                    </Button>
-                    {stats?.totalEvents === 0 && (
-                      <Button
-                        variant="outlined"
-                        onClick={handleCreateMockEvents}
-                        disabled={creatingMockEvents}
-                        startIcon={<AddCircleIcon />}
-                        size="large"
-                        sx={{ textTransform: 'none', borderRadius: 2 }}
-                      >
-                        {creatingMockEvents ? 'Creating...' : 'Add Sample Events'}
-                      </Button>
-                    )}
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Grow in timeout={800}>
+                <Card sx={{ 
+                  height: '100%', 
+                  background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(48, 207, 208, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Sent Proposals
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.sentProposals || 0}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Grow in timeout={900}>
+                <Card sx={{ 
+                  height: '100%', 
+                  background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', 
+                  color: '#333',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(168, 237, 234, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Conversion Rate
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.conversionRate?.toFixed(1) || 0}%
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grow>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper 
+                elevation={3} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+                  border: '1px solid rgba(102, 126, 234, 0.1)',
+                }}
+              >
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Quick Actions
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    component={Link}
+                    to="/events/create"
+                    startIcon={<EventIcon />}
+                    size="large"
+                    fullWidth
+                    sx={{ 
+                      textTransform: 'none', 
+                      borderRadius: 2,
+                      py: 1.5,
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    Create Event
+                  </Button>
+                  {stats?.totalEvents === 0 && (
                     <Button
                       variant="outlined"
-                      component={Link}
-                      to="/matches"
-                      startIcon={<AutoAwesomeIcon />}
+                      onClick={handleCreateMockEvents}
+                      disabled={creatingMockEvents}
+                      startIcon={<AddCircleIcon />}
                       size="large"
-                      sx={{ textTransform: 'none', borderRadius: 2 }}
+                      fullWidth
+                      sx={{ textTransform: 'none', borderRadius: 2, py: 1.5 }}
                     >
-                      View Matches
+                      {creatingMockEvents ? 'Creating...' : 'Add Sample Events'}
                     </Button>
+                  )}
+                  <Button
+                    variant="outlined"
+                    component={Link}
+                    to="/matches"
+                    startIcon={<AutoAwesomeIcon />}
+                    size="large"
+                    fullWidth
+                    sx={{ textTransform: 'none', borderRadius: 2, py: 1.5 }}
+                  >
+                    View Matches
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    component={Link}
+                    to="/proposals"
+                    startIcon={<TrendingUpIcon />}
+                    size="large"
+                    fullWidth
+                    sx={{ textTransform: 'none', borderRadius: 2, py: 1.5 }}
+                  >
+                    View Proposals
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper 
+                elevation={3} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 3,
+                  background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.05) 0%, rgba(245, 87, 108, 0.05) 100%)',
+                  border: '1px solid rgba(240, 147, 251, 0.1)',
+                }}
+              >
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Match Insights
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Pending Matches
+                    </Typography>
+                    <Chip 
+                      label={stats?.pendingMatches || 0} 
+                      color="default" 
+                      size="small"
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Interested Matches
+                    </Typography>
+                    <Chip 
+                      label={stats?.interestedMatches || 0} 
+                      color="info" 
+                      size="small"
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Accepted Matches
+                    </Typography>
+                    <Chip 
+                      label={stats?.acceptedMatches || 0} 
+                      color="success" 
+                      size="small"
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Accepted Proposals
+                    </Typography>
+                    <Chip 
+                      label={stats?.acceptedProposals || 0} 
+                      color="success" 
+                      size="small"
+                    />
                   </Box>
                 </Box>
               </Paper>
