@@ -72,8 +72,10 @@ const MatchesPage = () => {
         setMatches(populatedMatches);
       } else {
         const brand = await Brands.findByUserId(user.id);
+        console.log('Brand found for user:', brand);
         if (brand) {
           const matchesData = await Matches.find({ brandId: brand.id });
+          console.log('Matches found for brand:', brand.id, matchesData.length, matchesData);
           
           // Populate events - but keep the eventId as ID for queries
           const populatedMatches = await Promise.all(
@@ -88,8 +90,10 @@ const MatchesPage = () => {
             })
           );
           
+          console.log('Populated matches:', populatedMatches);
           setMatches(populatedMatches);
         } else {
+          console.log('No brand found for user:', user.id);
           setMatches([]);
         }
       }
@@ -126,10 +130,22 @@ const MatchesPage = () => {
         }
 
         // Use the brand-specific matching function
-        await findMatchesForBrand(brand.id);
+        const result = await findMatchesForBrand(brand.id);
+        console.log('Find matches result:', result);
       }
       
-      fetchMatches();
+      // Wait a bit for Firestore to save the matches, then refresh
+      // Try multiple times to ensure matches are loaded
+      let retries = 0;
+      const maxRetries = 3;
+      const refreshMatches = async () => {
+        await fetchMatches();
+        retries++;
+        if (retries < maxRetries) {
+          setTimeout(refreshMatches, 1500);
+        }
+      };
+      setTimeout(refreshMatches, 1500);
     } catch (error) {
       setError('Failed to find matches: ' + (error.message || 'Unknown error'));
       console.error('Error finding matches:', error);

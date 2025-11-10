@@ -633,11 +633,15 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
         }
       }
 
-      // Find all active events
-    const eventsSnapshot = await db.collection('events').where('status', '==', 'active').get();
+      // Find all events (active, draft, matched, etc.) except cancelled
+    const allEventsSnapshot = await db.collection('events').get();
+    const eventsDocs = allEventsSnapshot.docs.filter(doc => {
+      const event = doc.data();
+      return event.status !== 'cancelled';
+    });
     const matches = [];
 
-    for (const eventDoc of eventsSnapshot.docs) {
+    for (const eventDoc of eventsDocs) {
       let event = { id: eventDoc.id, ...eventDoc.data() };
 
       // Ensure event has AI profile
@@ -717,9 +721,11 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
 
         if (matchQuery.empty) {
           matchData.createdAt = admin.firestore.FieldValue.serverTimestamp();
-          await db.collection('matches').add(matchData);
+          const matchRef = await db.collection('matches').add(matchData);
+          console.log(`Created new match document: ${matchRef.id} for brand ${brandId} and event ${event.id}`);
         } else {
           await matchQuery.docs[0].ref.update(matchData);
+          console.log(`Updated existing match document: ${matchQuery.docs[0].id} for brand ${brandId} and event ${event.id}`);
         }
       }
     }
@@ -727,6 +733,7 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
     matches.sort((a, b) => b.score - a.score);
     
     console.log(`Found ${matches.length} matches for brand ${brandId}`);
+    console.log(`Saved ${matches.length} match documents to Firestore`);
     res.json({ 
       matches: matches.slice(0, 20),
       total: matches.length,

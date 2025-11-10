@@ -24,7 +24,7 @@ import {
   AccountCircle,
   Logout,
   Settings,
-  AutoAwesome as AutoAwesomeIcon,
+  Link as LinkIcon,
   Feed as FeedIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -51,14 +51,15 @@ const Navbar = () => {
   return (
     <AppBar 
       position="sticky" 
-      elevation={2}
+      elevation={0}
       sx={{ 
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
         transition: 'all 0.3s ease',
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+      <Toolbar sx={{ justifyContent: 'space-between', py: 1.5, px: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Typography
             variant="h5"
@@ -67,32 +68,37 @@ const Navbar = () => {
             sx={{ 
               textDecoration: 'none', 
               color: 'inherit',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1
+              fontWeight: 700,
+              fontSize: '1.5rem',
+              letterSpacing: '-0.5px',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                opacity: 0.9,
+                transform: 'translateY(-1px)',
+              }
             }}
           >
-            <AutoAwesomeIcon sx={{ fontSize: 28 }} />
             SponsorLink
           </Typography>
         </Box>
 
         {isAuthenticated ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Button 
               color="inherit" 
               component={Link} 
               to="/dashboard"
-              startIcon={<DashboardIcon />}
               sx={{ 
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  transform: 'translateY(-2px)',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
                 }
               }}
             >
@@ -103,68 +109,87 @@ const Navbar = () => {
               color="inherit" 
               component={Link} 
               to="/feed"
-              startIcon={<FeedIcon />}
               sx={{ 
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  transform: 'translateY(-2px)',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
                 }
               }}
             >
               Feed
             </Button>
             
+            {/* Events button - shown for both organizers and brands */}
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to="/events"
+              sx={{ 
+                textTransform: 'none',
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                transition: 'all 0.3s ease',
+                '&:hover': { 
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
+                }
+              }}
+            >
+              Events
+            </Button>
+
             {(user?.userType || 'organizer') === 'organizer' ? (
-              <>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to="/events"
-                  startIcon={<EventIcon />}
-                  sx={{ 
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    px: 2,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-                  }}
-                >
-                  Events
-                </Button>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to="/events/create"
-                  startIcon={<AddIcon />}
-                  variant="outlined"
-                  sx={{ 
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    borderColor: 'rgba(255,255,255,0.5)',
-                    color: 'white',
-                    '&:hover': { 
-                      borderColor: 'white',
-                      bgcolor: 'rgba(255,255,255,0.1)' 
-                    }
-                  }}
-                >
-                  Create Event
-                </Button>
-              </>
+              <Button 
+                color="inherit" 
+                component={Link} 
+                to="/events/create"
+                variant="outlined"
+                sx={{ 
+                  textTransform: 'none',
+                  borderRadius: 2,
+                  px: 2.5,
+                  py: 1,
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  borderColor: 'rgba(255,255,255,0.6)',
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    borderColor: 'white',
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    transform: 'translateY(-1px)',
+                  }
+                }}
+              >
+                Create Event
+              </Button>
             ) : (
               <Button 
                 color="inherit" 
                 component={Link} 
                 to="/brand/profile"
-                startIcon={<BusinessIcon />}
                 sx={{ 
                   textTransform: 'none',
                   borderRadius: 2,
                   px: 2,
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+                  py: 1,
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    transform: 'translateY(-1px)',
+                  }
                 }}
               >
                 Profile
@@ -175,15 +200,17 @@ const Navbar = () => {
               color="inherit" 
               component={Link} 
               to="/matches"
-              startIcon={<MatchesIcon />}
               sx={{ 
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  transform: 'translateY(-2px)',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
                 }
               }}
             >
@@ -194,15 +221,17 @@ const Navbar = () => {
               color="inherit" 
               component={Link} 
               to="/proposals"
-              startIcon={<ProposalsIcon />}
               sx={{ 
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  transform: 'translateY(-2px)',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
                 }
               }}
             >
@@ -213,36 +242,55 @@ const Navbar = () => {
               color="inherit" 
               component={Link} 
               to="/analytics"
-              startIcon={<AnalyticsIcon />}
               sx={{ 
                 textTransform: 'none',
                 borderRadius: 2,
                 px: 2,
+                py: 1,
+                fontSize: '0.9rem',
+                fontWeight: 500,
                 transition: 'all 0.3s ease',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                  transform: 'translateY(-2px)',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  transform: 'translateY(-1px)',
                 }
               }}
             >
               Analytics
             </Button>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.2)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: 2, pl: 2, borderLeft: '1px solid rgba(255,255,255,0.25)' }}>
               <Chip
                 label={(user?.userType || 'organizer') === 'organizer' ? 'Organizer' : 'Brand'}
                 size="small"
                 sx={{ 
                   bgcolor: 'rgba(255,255,255,0.2)',
                   color: 'white',
-                  fontWeight: 'bold'
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                  height: 24,
+                  border: '1px solid rgba(255,255,255,0.3)',
                 }}
               />
               <IconButton
                 onClick={handleMenuOpen}
-                sx={{ color: 'white' }}
+                sx={{ 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    bgcolor: 'rgba(255,255,255,0.1)',
+                  }
+                }}
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.3)' }}>
+                <Avatar sx={{ 
+                  width: 36, 
+                  height: 36, 
+                  bgcolor: 'rgba(255,255,255,0.25)',
+                  border: '2px solid rgba(255,255,255,0.4)',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                }}>
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </Avatar>
               </IconButton>
@@ -260,7 +308,6 @@ const Navbar = () => {
                   </Box>
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
-                  <Logout sx={{ mr: 1, fontSize: 20 }} />
                   Logout
                 </MenuItem>
               </Menu>

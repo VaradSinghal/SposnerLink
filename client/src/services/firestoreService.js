@@ -402,20 +402,39 @@ export const Matches = {
         q = query(q, where('status', '==', filters.status));
       }
 
-      // Try to order by relevanceScore, but if it fails (no index), just get results
+      // Try to order by relevanceScore, but if it fails (no index), just get results without ordering
+      let snapshot;
       try {
         q = query(q, orderBy('relevanceScore', 'desc'));
+        snapshot = await getDocs(q);
       } catch (e) {
-        console.warn('Could not order by relevanceScore, index may be needed');
+        // If ordering fails (no index), try without ordering
+        console.warn('Could not order by relevanceScore, index may be needed. Fetching without order:', e.message);
+        try {
+          // Remove orderBy and try again
+          let qWithoutOrder = query(matchesCollection);
+          if (filters.eventId) {
+            qWithoutOrder = query(qWithoutOrder, where('eventId', '==', filters.eventId));
+          }
+          if (filters.brandId) {
+            qWithoutOrder = query(qWithoutOrder, where('brandId', '==', filters.brandId));
+          }
+          if (filters.status) {
+            qWithoutOrder = query(qWithoutOrder, where('status', '==', filters.status));
+          }
+          snapshot = await getDocs(qWithoutOrder);
+        } catch (error2) {
+          console.error('Error fetching matches without order:', error2);
+          return [];
+        }
       }
       
-      const snapshot = await getDocs(q);
       let results = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return { id: docSnap.id, ...data, createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };
       });
       
-      // Sort manually if orderBy failed
+      // Sort manually by relevanceScore if available
       if (results.length > 0 && results[0].relevanceScore !== undefined) {
         results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
       }

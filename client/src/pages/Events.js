@@ -60,12 +60,14 @@ const EventsPage = () => {
         // Organizers see their own events
         eventsData = await Events.find({ organizerId: user.id });
       } else {
-        // Sponsors see only active events
+        // Brands see all events (active, draft, matched, etc.) except cancelled
         const allEvents = await Events.find();
-        eventsData = allEvents.filter(event => event.status === 'active');
+        eventsData = allEvents.filter(event => event.status !== 'cancelled');
       }
       
+      console.log('Events - User type:', user?.userType);
       console.log('Events - Found events:', eventsData.length);
+      console.log('Events - Event statuses:', eventsData.map(e => ({ id: e.id, status: e.status, name: e.name })));
       setEvents(eventsData || []);
     } catch (error) {
       setError('Failed to fetch events');
