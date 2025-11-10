@@ -479,10 +479,19 @@ app.post('/api/find-matches-for-event', verifyToken, async (req, res) => {
     }
 
     matches.sort((a, b) => b.score - a.score);
-    res.json({ matches: matches.slice(0, 20) });
+    
+    console.log(`Found ${matches.length} matches for event ${eventId}`);
+    res.json({ 
+      matches: matches.slice(0, 20),
+      total: matches.length,
+      message: `Found ${matches.length} potential brand matches for your event!`
+    });
   } catch (error) {
     console.error('Error finding matches for event:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message || 'Failed to find matches',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -511,18 +520,33 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
 
     // Ensure brand has AI profile
     if (!brand.aiProfile?.embeddings) {
-      const brandText = `${brand.companyName} ${brand.description} ${brand.productServiceType} ${(brand.marketingGoals || []).join(' ')}`;
-      const embedding = await generateEmbedding(brandText);
-      const { summary, keywords } = await generateSummary(brandText);
-      
-      await db.collection('brands').doc(brandId).update({
-        aiProfile: {
-          embeddings: embedding,
-          keywords,
-          summary
+      try {
+        const brandText = `${brand.companyName || ''} ${brand.description || ''} ${brand.productServiceType || ''} ${(brand.marketingGoals || []).join(' ')}`.trim();
+        if (!brandText) {
+          throw new Error('Brand has no text content for AI processing');
         }
-      });
-      brand.aiProfile = { embeddings: embedding, keywords, summary };
+        
+        const embedding = await generateEmbedding(brandText);
+        const { summary, keywords } = await generateSummary(brandText);
+        
+        await db.collection('brands').doc(brandId).update({
+          aiProfile: {
+            embeddings: embedding,
+            keywords: keywords || [],
+            summary: summary || brand.description || 'No summary available'
+          }
+        });
+        brand.aiProfile = { embeddings: embedding, keywords, summary };
+      } catch (error) {
+        console.error('Error creating AI profile for brand:', error);
+        // Create a basic fallback profile
+        const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
+        brand.aiProfile = {
+          embeddings: fallbackEmbedding,
+          keywords: [brand.productServiceType, brand.companyName].filter(Boolean).slice(0, 5),
+          summary: brand.description || 'No summary available'
+        };
+      }
     }
 
     // Find all active events
@@ -534,18 +558,33 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
 
       // Ensure event has AI profile
       if (!event.aiProfile?.embeddings) {
-        const eventText = `${event.name} ${event.description} ${event.type} ${event.theme || ''}`;
-        const embedding = await generateEmbedding(eventText);
-        const { summary, keywords } = await generateSummary(eventText);
-        
-        await db.collection('events').doc(event.id).update({
-          aiProfile: {
-            embeddings: embedding,
-            keywords,
-            summary
+        try {
+          const eventText = `${event.name || ''} ${event.description || ''} ${event.type || ''} ${event.theme || ''}`.trim();
+          if (!eventText) {
+            throw new Error('Event has no text content for AI processing');
           }
-        });
-        event.aiProfile = { embeddings: embedding, keywords, summary };
+          
+          const embedding = await generateEmbedding(eventText);
+          const { summary, keywords } = await generateSummary(eventText);
+          
+          await db.collection('events').doc(event.id).update({
+            aiProfile: {
+              embeddings: embedding,
+              keywords: keywords || [],
+              summary: summary || event.description || 'No summary available'
+            }
+          });
+          event.aiProfile = { embeddings: embedding, keywords, summary };
+        } catch (error) {
+          console.error('Error creating AI profile for event:', error);
+          // Create a basic fallback profile
+          const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
+          event.aiProfile = {
+            embeddings: fallbackEmbedding,
+            keywords: [event.type, event.name].filter(Boolean).slice(0, 5),
+            summary: event.description || 'No summary available'
+          };
+        }
       }
 
       // Calculate relevance
@@ -587,10 +626,19 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
     }
 
     matches.sort((a, b) => b.score - a.score);
-    res.json({ matches: matches.slice(0, 20) });
+    
+    console.log(`Found ${matches.length} matches for brand ${brandId}`);
+    res.json({ 
+      matches: matches.slice(0, 20),
+      total: matches.length,
+      message: `Found ${matches.length} potential event matches for your brand!`
+    });
   } catch (error) {
     console.error('Error finding matches for brand:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message || 'Failed to find matches',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -653,26 +701,45 @@ app.post('/api/chat', verifyToken, async (req, res) => {
     if (userId && db) {
       try {
         if (userType === 'organizer') {
+          // Try to get user from users collection
           const userDoc = await db.collection('users').doc(userId).get();
           if (userDoc.exists) {
             userContext = userDoc.data();
+          } else {
+            // Try to find by firebaseUid
+            const userQuery = await db.collection('users').where('firebaseUid', '==', req.user.uid).limit(1).get();
+            if (!userQuery.empty) {
+              userContext = userQuery.docs[0].data();
+            }
           }
         } else if (userType === 'brand') {
-          const brandDoc = await db.collection('brands').where('userId', '==', userId).limit(1).get();
-          if (!brandDoc.empty) {
-            userContext = brandDoc.docs[0].data();
+          // Try to find brand by userId (which might be firebaseUid)
+          let brandQuery = await db.collection('brands').where('userId', '==', userId).limit(1).get();
+          if (brandQuery.empty) {
+            // Try with firebaseUid
+            brandQuery = await db.collection('brands').where('userId', '==', req.user.uid).limit(1).get();
+          }
+          if (!brandQuery.empty) {
+            userContext = brandQuery.docs[0].data();
           }
         }
       } catch (err) {
         console.warn('Could not fetch user context:', err.message);
+        // Continue without context
       }
     }
 
-    const response = await generateChatResponse(message, userType, userContext);
-
-    res.json({ message: response });
+    try {
+      const response = await generateChatResponse(message, userType || 'organizer', userContext);
+      res.json({ message: response });
+    } catch (chatError) {
+      console.error('Error generating chat response:', chatError);
+      res.json({ 
+        message: 'I apologize, but I encountered an error processing your message. Please try rephrasing your question or contact support if the issue persists.' 
+      });
+    }
   } catch (error) {
-    console.error('Error in chat:', error);
+    console.error('Error in chat endpoint:', error);
     res.status(500).json({ error: error.message || 'Failed to process chat message' });
   }
 });
