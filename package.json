@@ -1,0 +1,18 @@
+{
+  "name": "sponsorlink",
+  "version": "1.0.0",
+  "description": "AI-Powered Sponsorship Matchmaking Platform",
+  "main": "client/src/index.js",
+  "scripts": {
+    "start": "cd client && npm start",
+    "dev": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev"
+  },
+  "keywords": ["sponsorship", "ai", "matchmaking", "events"],
+  "author": "",
+  "license": "MIT"
+}
+
