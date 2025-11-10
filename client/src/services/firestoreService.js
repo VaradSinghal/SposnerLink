@@ -508,6 +508,9 @@ export const Proposals = {
       if (filters.brandId) {
         q = query(q, where('brandId', '==', filters.brandId));
       }
+      if (filters.eventId) {
+        q = query(q, where('eventId', '==', filters.eventId));
+      }
       if (filters.status) {
         q = query(q, where('status', '==', filters.status));
       }

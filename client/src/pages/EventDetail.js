@@ -13,10 +13,14 @@ import {
   Alert,
   Paper,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { Events, Matches, Brands } from '../services/firestoreService';
-import { findMatchesForEvent } from '../services/apiService';
+import { Events, Matches, Brands, Proposals } from '../services/firestoreService';
+import { findMatchesForEvent, generateProposal as generateProposalAPI } from '../services/apiService';
 import { format } from 'date-fns';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Grow, Fade, Skeleton } from '@mui/material';
@@ -31,6 +35,8 @@ const EventDetail = () => {
   const [findingMatches, setFindingMatches] = useState(false);
   const [existingMatch, setExistingMatch] = useState(null);
   const [checkingMatch, setCheckingMatch] = useState(false);
+  const [sendingProposal, setSendingProposal] = useState(false);
+  const [proposalDialog, setProposalDialog] = useState({ open: false, proposal: null });
 
   useEffect(() => {
     if (id) {
@@ -95,6 +101,59 @@ const EventDetail = () => {
 
   const handleViewMatches = () => {
     navigate('/matches');
+  };
+
+  const handleSendProposal = async () => {
+    if (!user?.id || !id) {
+      setError('Please log in to send a proposal');
+      return;
+    }
+
+    setSendingProposal(true);
+    setError('');
+    try {
+      const brand = await Brands.findByUserId(user.id);
+      if (!brand) {
+        setError('Please complete your brand profile first');
+        setSendingProposal(false);
+        return;
+      }
+
+      // Check if proposal already exists
+      const existingProposals = await Proposals.find({ 
+        eventId: id, 
+        brandId: brand.id 
+      });
+
+      if (existingProposals.length > 0) {
+        setError('You have already sent a proposal for this event');
+        setSendingProposal(false);
+        return;
+      }
+
+      // Generate proposal using AI
+      const result = await generateProposalAPI(id, brand.id);
+      const proposalContent = result.proposalContent;
+
+      // Create proposal in Firestore (from brand to event)
+      const proposal = await Proposals.create({
+        eventId: id,
+        brandId: brand.id,
+        organizerId: event?.organizerId?.id || event?.organizerId,
+        content: proposalContent,
+        generatedBy: 'ai',
+        status: 'sent',
+        sentAt: new Date(),
+        proposalType: 'brand_to_event' // Mark as brand-initiated
+      });
+
+      setProposalDialog({ open: true, proposal });
+    } catch (error) {
+      setError('Failed to send proposal: ' + (error.message || 'Unknown error'));
+      console.error('Error sending proposal:', error);
+    } finally {
+      setSendingProposal(false);
+    }
   };
 
   if (loading) {
@@ -179,27 +238,27 @@ const EventDetail = () => {
             {findingMatches ? 'Finding Matches...' : 'Find Sponsors'}
           </Button>
         )}
-        {user?.userType === 'brand' && existingMatch && (
+        {user?.userType === 'brand' && event?.status === 'active' && (
           <Button
-            variant="outlined"
+            variant="contained"
             startIcon={<AutoAwesomeIcon />}
-            onClick={handleViewMatches}
+            onClick={handleSendProposal}
+            disabled={sendingProposal}
             sx={{ 
               textTransform: 'none', 
               borderRadius: 2,
               px: 3,
               py: 1.5,
-              borderColor: '#667eea',
-              color: '#667eea',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               '&:hover': {
-                borderColor: '#5a6fd8',
-                background: 'rgba(102, 126, 234, 0.05)',
+                background: 'linear-gradient(135deg, #5a6fd8 0%, #6a3f92 100%)',
                 transform: 'translateY(-2px)',
+                boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)',
               },
               transition: 'all 0.3s ease',
             }}
           >
-            View Match Details
+            {sendingProposal ? 'Sending Proposal...' : 'Send Proposal'}
           </Button>
         )}
       </Box>
@@ -338,6 +397,63 @@ const EventDetail = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {error && (
+        <Alert severity="error" sx={{ mt: 2, mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Proposal Sent Dialog */}
+      <Dialog
+        open={proposalDialog.open}
+        onClose={() => setProposalDialog({ open: false, proposal: null })}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon color="primary" />
+            <Typography variant="h6">Proposal Sent Successfully!</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {proposalDialog.proposal && (
+            <Box>
+              <Typography variant="body1" paragraph sx={{ mt: 1 }}>
+                Your proposal has been sent to the event organizer. They will review it and get back to you.
+              </Typography>
+              {proposalDialog.proposal.content?.subject && (
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                  {proposalDialog.proposal.content.subject}
+                </Typography>
+              )}
+              <Typography variant="body2" paragraph sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>
+                {typeof proposalDialog.proposal.content === 'string' 
+                  ? proposalDialog.proposal.content 
+                  : proposalDialog.proposal.content?.body || 'Proposal sent successfully'}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={() => {
+              setProposalDialog({ open: false, proposal: null });
+              navigate('/proposals');
+            }}
+            variant="contained"
+            sx={{ 
+              textTransform: 'none', 
+              borderRadius: 2,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            }}
+          >
+            View Proposals
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

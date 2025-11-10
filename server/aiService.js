@@ -25,8 +25,8 @@ const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
 
 
-// Generate embeddings for text
-async function generateEmbedding(text) {
+// Generate embeddings for text with retry logic
+async function generateEmbedding(text, retries = 2) {
   try {
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       console.warn('Empty or invalid text provided for embedding');
@@ -35,36 +35,42 @@ async function generateEmbedding(text) {
 
     if (!openai || !process.env.OPENAI_API_KEY) {
       console.warn('OpenAI API key not set, using fallback embedding');
-      // Generate a more meaningful fallback based on text content
-      const hash = text.split('').reduce((acc, char) => {
-        return ((acc << 5) - acc) + char.charCodeAt(0);
-      }, 0);
-      return Array(1536).fill(0).map((_, i) => {
-        const seed = (hash + i) % 1000 / 1000;
-        return seed * 0.2; // Normalize to small values
+      return generateFallbackEmbedding(text);
+    }
+
+    try {
+      console.log('Calling OpenAI API for embedding...');
+      const response = await openai.embeddings.create({
+        model: 'text-embedding-ada-002',
+        input: text.substring(0, 8000) // Limit to avoid token limits
       });
+
+      if (!response.data || !response.data[0] || !response.data[0].embedding) {
+        throw new Error('Invalid embedding response');
+      }
+
+      console.log('Successfully generated embedding from OpenAI');
+      return response.data[0].embedding;
+    } catch (apiError) {
+      // Handle rate limit errors with retry
+      if ((apiError.status === 429 || apiError.message?.includes('quota') || apiError.message?.includes('rate limit')) && retries > 0) {
+        const waitTime = Math.pow(2, 3 - retries) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`Rate limit hit, retrying in ${waitTime}ms... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return generateEmbedding(text, retries - 1);
+      }
+      throw apiError;
     }
-
-    const response = await openai.embeddings.create({
-      model: 'text-embedding-ada-002',
-      input: text.substring(0, 8000) // Limit to avoid token limits
-    });
-
-    if (!response.data || !response.data[0] || !response.data[0].embedding) {
-      throw new Error('Invalid embedding response');
-    }
-
-    return response.data[0].embedding;
   } catch (error) {
-    console.error('Error generating embedding:', error.message);
-    // Return a fallback embedding
-    const hash = (text || '').split('').reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, 0);
-    return Array(1536).fill(0).map((_, i) => {
-      const seed = (hash + i) % 1000 / 1000;
-      return seed * 0.2;
-    });
+    // Check if it's a quota/rate limit error
+    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('rate limit')) {
+      console.warn('OpenAI quota/rate limit exceeded after retries, using enhanced fallback embedding');
+    } else {
+      console.error('Error generating embedding:', error.message);
+    }
+    
+    // Enhanced fallback embedding based on text content
+    return generateFallbackEmbedding(text || '');
   }
 }
 
@@ -86,8 +92,8 @@ function cosineSimilarity(vecA, vecB) {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Generate AI summary and keywords
-async function generateSummary(text) {
+// Generate AI summary and keywords with retry logic
+async function generateSummary(text, retries = 2) {
   try {
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return {
@@ -107,30 +113,43 @@ async function generateSummary(text) {
       return { summary, keywords };
     }
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that summarizes text and extracts keywords. Always provide a concise summary and a list of relevant keywords.'
-        },
-        {
-          role: 'user',
-          content: `Summarize this text in 2-3 sentences and extract 5-10 key keywords:\n\n${text.substring(0, 4000)}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 200
-    });
+    try {
+      console.log('Calling OpenAI API for summary...');
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that summarizes text and extracts keywords. Always provide a concise summary and a list of relevant keywords.'
+          },
+          {
+            role: 'user',
+            content: `Summarize this text in 2-3 sentences and extract 5-10 key keywords:\n\n${text.substring(0, 4000)}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      });
 
-    if (!response.choices || !response.choices[0] || !response.choices[0].message) {
-      throw new Error('Invalid summary response');
+      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+        throw new Error('Invalid summary response');
+      }
+
+      const summary = response.choices[0].message.content;
+      const keywords = extractKeywords(summary + ' ' + text);
+      
+      console.log('Successfully generated summary from OpenAI');
+      return { summary, keywords };
+    } catch (apiError) {
+      // Handle rate limit errors with retry
+      if ((apiError.status === 429 || apiError.message?.includes('quota') || apiError.message?.includes('rate limit')) && retries > 0) {
+        const waitTime = Math.pow(2, 3 - retries) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`Rate limit hit, retrying in ${waitTime}ms... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return generateSummary(text, retries - 1);
+      }
+      throw apiError;
     }
-
-    const summary = response.choices[0].message.content;
-    const keywords = extractKeywords(summary + ' ' + text);
-
-    return { summary, keywords };
   } catch (error) {
     console.error('Error generating summary:', error.message);
     // Better fallback
@@ -148,6 +167,51 @@ function extractKeywords(text) {
   const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those'];
   const filtered = words.filter(w => !commonWords.includes(w) && w.length > 3);
   return [...new Set(filtered)].slice(0, 10);
+}
+
+// Generate enhanced fallback embedding based on text content
+function generateFallbackEmbedding(text) {
+  if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    return Array(1536).fill(0).map(() => Math.random() * 0.1);
+  }
+
+  // Extract meaningful features from text
+  const normalizedText = text.toLowerCase();
+  const words = normalizedText.match(/\b\w{4,}\b/g) || [];
+  const commonWords = ['the', 'that', 'this', 'with', 'from', 'have', 'will', 'your', 'their', 'what', 'when', 'where', 'which', 'about', 'after', 'before', 'during', 'under', 'above', 'between'];
+  const keywords = [...new Set(words.filter(w => !commonWords.includes(w)))];
+  
+  // Create hash-based embedding with better distribution
+  const textHash = text.split('').reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+  }, 0);
+  
+  // Generate embedding based on multiple features
+  const embedding = Array(1536).fill(0);
+  const numKeywords = Math.min(keywords.length, 50);
+  
+  // Use keyword positions to seed embedding
+  keywords.slice(0, 50).forEach((keyword, idx) => {
+    const keywordHash = keyword.split('').reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0);
+    }, 0);
+    const position = (keywordHash % 1536 + idx * 30) % 1536;
+    embedding[position] = (keywordHash % 1000) / 1000 * 0.3;
+  });
+  
+  // Add text hash influence
+  for (let i = 0; i < 1536; i++) {
+    const seed = ((textHash + i) % 1000) / 1000;
+    embedding[i] = (embedding[i] + seed * 0.2) / 1.2; // Normalize
+  }
+  
+  // Normalize the embedding vector
+  const norm = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+  if (norm > 0) {
+    return embedding.map(val => val / norm * 0.5); // Scale to reasonable range
+  }
+  
+  return embedding;
 }
 
 // Generate proposal content
@@ -278,128 +342,144 @@ Be friendly, concise, and helpful. Provide actionable advice.`;
       }
     }
 
-    // Handle specific questions
-    if (lowerMessage.includes('how does matching work') || lowerMessage.includes('how does the matching system work')) {
-      return `Our AI-powered matching system uses multiple factors to find the best matches:
-
-1. **Semantic Similarity** (10 points): Uses AI embeddings to understand the meaning and context of your event/brand description
-2. **Category Fit** (30 points): Matches event types with brand preferences
-3. **Audience Overlap** (25 points): Compares target audience demographics, age ranges, and interests
-4. **Location Fit** (20 points): Matches event locations with brand location preferences
-5. **Budget Fit** (15 points): Ensures budget ranges align
-
-The system calculates a relevance score (0-100) and shows matches with scores above 30. Higher scores mean better alignment!
-
-To get better matches:
-- Fill out your profile completely
-- Be specific about your target audience
-- Include detailed descriptions
-- Set realistic budget ranges`;
+    // Check if OpenAI is available - if not, use fallback
+    if (!openai || !process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not set, using fallback response');
+      return getFallbackChatResponse(lowerMessage, userType);
     }
 
-    if (lowerMessage.includes('how do i create an event') || lowerMessage.includes('create event')) {
-      return `To create an event:
+    // Try to use OpenAI API first
+    try {
+      console.log('Calling OpenAI API for chat response...');
+      const response = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
 
-1. Go to the "Events" page and click "Create Event"
-2. Fill out the multi-step form:
-   - **Step 1**: Basic info (name, type, description, scale, expected attendees)
-   - **Step 2**: Location & dates
-   - **Step 3**: Target audience (age range, interests)
-   - **Step 4**: Sponsorship needs (budget, categories, requirements)
-
-3. Click "Create Event & Find Matches"
-4. Our AI will automatically find matching brands!
-
-**Tips for better matches:**
-- Be detailed in your description
-- Accurately describe your target audience
-- Set realistic budget expectations
-- Include all relevant event categories`;
-    }
-
-    if (lowerMessage.includes('how do i find sponsors') || lowerMessage.includes('find sponsors')) {
-      if (userType === 'organizer') {
-        return `To find sponsors for your events:
-
-1. **Create your event** with complete details
-2. **The AI automatically finds matches** when you create/update an event
-3. **View matches** on the "Matches" page
-4. **Review match scores** - higher scores mean better alignment
-5. **Generate proposals** for brands you're interested in
-6. **Send proposals** through the platform
-
-**Pro tip**: Update your event details regularly. The AI re-matches when you update your event, so you'll discover new potential sponsors!`;
-      } else {
-        return `To find events to sponsor:
-
-1. **Complete your brand profile** with all details
-2. **The AI automatically finds matches** when you create/update your profile
-3. **View matches** on the "Matches" page
-4. **Review match scores** - higher scores mean better alignment
-5. **Generate proposals** for events you're interested in
-6. **Contact organizers** through the platform
-
-**Pro tip**: Be specific about your target audience and marketing goals. This helps the AI find events that truly align with your brand!`;
+      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+        throw new Error('Invalid chat response');
       }
-    }
 
-    if (lowerMessage.includes('what makes a good profile') || lowerMessage.includes('good profile')) {
-      if (userType === 'organizer') {
-        return `A great event profile includes:
-
-✅ **Detailed description**: Explain what makes your event unique
-✅ **Accurate target audience**: Age range, interests, demographics
-✅ **Clear sponsorship needs**: Budget range, categories, deliverables
-✅ **Location details**: City, country, venue information
-✅ **Event scale**: Expected attendees, event type
-✅ **Marketing goals**: What sponsors can expect
-
-**The more detail, the better!** Our AI uses this information to find brands that truly match your event.`;
-      } else {
-        return `A great brand profile includes:
-
-✅ **Company description**: What you do and what makes you unique
-✅ **Target audience**: Age range, interests, demographics you want to reach
-✅ **Marketing goals**: Awareness, lead generation, brand building, etc.
-✅ **Event preferences**: Categories, locations, event scales
-✅ **Budget range**: Realistic sponsorship budget
-✅ **Location preferences**: Cities/countries where you want to sponsor
-
-**The more detail, the better!** Our AI uses this information to find events that truly match your brand.`;
+      const chatResponse = response.choices[0].message.content;
+      console.log('Successfully generated chat response from OpenAI');
+      return chatResponse;
+    } catch (apiError) {
+      // Handle rate limit errors with retry
+      if ((apiError.status === 429 || apiError.message?.includes('quota') || apiError.message?.includes('rate limit')) && retries > 0) {
+        const waitTime = Math.pow(2, 3 - retries) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`Rate limit hit, retrying in ${waitTime}ms... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return generateChatResponse(message, userType, userContext, retries - 1);
       }
+      // If API fails, use fallback
+      console.warn('OpenAI API failed, using fallback response:', apiError.message);
+      return getFallbackChatResponse(lowerMessage, userType);
     }
-
-    // Use OpenAI for general questions if API key is available
-    if (openai && process.env.OPENAI_API_KEY) {
-      try {
-        const response = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: message }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
-        });
-
-        return response.choices[0].message.content;
-      } catch (error) {
-        console.error('Error calling OpenAI:', error);
-      }
-    }
-
-    // Fallback response
-    return `I'm here to help you with:
-- Understanding how the matching system works
-- Creating and optimizing your profile
-- Finding sponsorship opportunities
-- Platform navigation
-
-What specific question can I help you with? You can ask about matching, creating events, finding sponsors, or anything else about the platform!`;
   } catch (error) {
     console.error('Error generating chat response:', error);
-    return 'Sorry, I encountered an error. Please try again or contact support.';
+    // Return fallback response
+    return getFallbackChatResponse(message.toLowerCase(), userType);
   }
+}
+
+// Get fallback chat response when OpenAI is not available
+function getFallbackChatResponse(lowerMessage, userType) {
+  // Handle specific questions
+  if (lowerMessage.includes('how does matching work') || lowerMessage.includes('how does the matching system work')) {
+    return `Our AI-powered matching system uses multiple factors to find the best matches:
+
+1. **Semantic Similarity** (25 points): Uses AI embeddings to understand the meaning and context of your event/brand description
+2. **Category Fit** (20 points): Matches event types with brand preferences
+3. **Audience Overlap** (20 points): Compares target audience demographics, age ranges, and interests
+4. **Location Fit** (15 points): Matches event locations with brand location preferences
+5. **Budget Fit** (10 points): Aligns sponsorship budgets
+6. **Marketing Goals Fit** (5 points): Matches marketing objectives
+7. **Event Scale Fit** (5 points): Considers event size preferences
+
+The system calculates a relevance score (0-100) and shows matches with scores above 30. Higher scores indicate better matches!`;
+  }
+  
+  if (lowerMessage.includes('how do i create') || lowerMessage.includes('create event') || lowerMessage.includes('create profile')) {
+    return userType === 'organizer' 
+      ? `To create an event:
+1. Go to the "Events" page and click "Create Event"
+2. Fill in the event details (name, description, type, location, dates)
+3. Add target audience information
+4. Specify sponsorship needs and budget range
+5. Click "Create Event" to save
+
+The more details you provide, the better matches you'll get!`
+      : `To create your brand profile:
+1. Go to your Profile page
+2. Fill in your company details (name, description, product/service type)
+3. Add your target audience information
+4. Specify your marketing goals and budget range
+5. Set your location preferences
+6. Click "Save Profile"
+
+A complete profile helps us find better matches for you!`;
+  }
+  
+  if (lowerMessage.includes('find sponsors') || lowerMessage.includes('find matches')) {
+    return userType === 'organizer'
+      ? `To find sponsors for your events:
+1. Create an event with complete details
+2. Go to the event detail page and click "Find Sponsors"
+3. The AI will analyze your event and match it with relevant brands
+4. View matches on the "Matches" page
+5. Generate and send proposals to interested brands
+
+Make sure your event is set to "active" status!`
+      : `To find events to sponsor:
+1. Complete your brand profile
+2. Go to the "Events" page to see available events
+3. Click "Find Matches" to let AI match you with relevant events
+4. View matches on the "Matches" page
+5. Send proposals to events you're interested in
+
+The AI analyzes your profile and finds events that align with your goals!`;
+  }
+  
+  if (lowerMessage.includes('proposal') || lowerMessage.includes('send proposal')) {
+    return `Proposals are AI-generated sponsorship pitches that help you communicate with potential partners:
+
+**For Organizers:**
+- Generate proposals from the Matches page
+- Review and customize the proposal
+- Send to brands you're interested in
+- Track proposal status (sent, viewed, responded)
+
+**For Brands:**
+- Receive proposals from event organizers
+- Send proposals to events you're interested in
+- Review and respond to proposals
+- Accept or decline sponsorship opportunities
+
+Proposals are automatically generated using AI to highlight the best match factors!`;
+  }
+  
+  // Default helpful response
+  return `I'm here to help you with ${userType === 'organizer' ? 'event sponsorship' : 'finding sponsorship opportunities'}!
+
+I can help you with:
+• Understanding how the matching system works
+• Creating and optimizing your ${userType === 'organizer' ? 'events' : 'profile'}
+• Finding ${userType === 'organizer' ? 'sponsors' : 'events to sponsor'}
+• Sending and managing proposals
+• Platform navigation
+
+What would you like to know more about?`;
 }
 
 module.exports = {
@@ -407,6 +487,7 @@ module.exports = {
   cosineSimilarity,
   generateSummary,
   generateProposal,
-  generateChatResponse
+  generateChatResponse,
+  generateFallbackEmbedding
 };
 

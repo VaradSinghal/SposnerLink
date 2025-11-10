@@ -54,9 +54,18 @@ const EventsPage = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      // Fetch all events from the database
-      const eventsData = await Events.find();
-      console.log('Events - Found all events:', eventsData.length);
+      let eventsData = [];
+      
+      if (user?.userType === 'organizer') {
+        // Organizers see their own events
+        eventsData = await Events.find({ organizerId: user.id });
+      } else {
+        // Sponsors see only active events
+        const allEvents = await Events.find();
+        eventsData = allEvents.filter(event => event.status === 'active');
+      }
+      
+      console.log('Events - Found events:', eventsData.length);
       setEvents(eventsData || []);
     } catch (error) {
       setError('Failed to fetch events');

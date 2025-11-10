@@ -18,7 +18,7 @@ import {
   Paper,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
-import { Proposals, Brands, Matches } from '../services/firestoreService';
+import { Proposals, Brands, Matches, Events } from '../services/firestoreService';
 import { format } from 'date-fns';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Grow, Fade, Skeleton } from '@mui/material';
@@ -42,7 +42,27 @@ const ProposalsPage = () => {
       let proposalsData = [];
       
       if (user?.userType === 'organizer') {
-        proposalsData = await Proposals.find({ organizerId: user.id });
+        // Organizers see proposals sent to their events (by eventId) OR sent by them (by organizerId)
+        const proposalsToEvents = await Proposals.find({ organizerId: user.id });
+        
+        // Also get proposals sent to events they own
+        const userEvents = await Events.find({ organizerId: user.id });
+        const eventIds = userEvents.map(e => e.id);
+        
+        let proposalsToMyEvents = [];
+        if (eventIds.length > 0) {
+          for (const eventId of eventIds) {
+            const eventProposals = await Proposals.find({ eventId });
+            proposalsToMyEvents = [...proposalsToMyEvents, ...eventProposals];
+          }
+        }
+        
+        // Combine and deduplicate
+        const allProposals = [...proposalsToEvents, ...proposalsToMyEvents];
+        const uniqueProposals = allProposals.filter((proposal, index, self) =>
+          index === self.findIndex(p => p.id === proposal.id)
+        );
+        proposalsData = uniqueProposals;
       } else {
         const brand = await Brands.findByUserId(user.id);
         if (brand) {
@@ -212,17 +232,38 @@ const ProposalsPage = () => {
 
                   {user?.userType === 'organizer' ? (
                     <>
-                      <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                        To: {proposal.brandId?.companyName || 'Unknown Brand'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Event: {proposal.eventId?.name || 'Unknown Event'}
-                      </Typography>
+                      {proposal.proposalType === 'brand_to_event' ? (
+                        <>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            From: {proposal.brandId?.companyName || 'Unknown Brand'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Event: {proposal.eventId?.name || 'Unknown Event'}
+                          </Typography>
+                          <Chip 
+                            label="Sponsor Proposal" 
+                            color="info" 
+                            size="small"
+                            sx={{ mt: 1 }}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                            To: {proposal.brandId?.companyName || 'Unknown Brand'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                            Event: {proposal.eventId?.name || 'Unknown Event'}
+                          </Typography>
+                        </>
+                      )}
                     </>
                   ) : (
                     <>
                       <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                        From: {proposal.organizerId?.name || 'Unknown Organizer'}
+                        {proposal.proposalType === 'brand_to_event' 
+                          ? `To: ${proposal.eventId?.name || 'Unknown Event'}`
+                          : `From: ${proposal.organizerId?.name || 'Unknown Organizer'}`}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Event: {proposal.eventId?.name || 'Unknown Event'}
@@ -422,6 +463,26 @@ const ProposalsPage = () => {
             >
               Send Proposal
             </Button>
+          )}
+          {user?.userType === 'organizer' && selectedProposal?.proposalType === 'brand_to_event' && selectedProposal?.status === 'sent' && (
+            <>
+              <Button
+                color="success"
+                variant="contained"
+                onClick={() => handleUpdateStatus(selectedProposal.id, 'accepted')}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                Accept
+              </Button>
+              <Button
+                color="error"
+                variant="outlined"
+                onClick={() => handleUpdateStatus(selectedProposal.id, 'declined')}
+                sx={{ textTransform: 'none', borderRadius: 2 }}
+              >
+                Decline
+              </Button>
+            </>
           )}
           {user?.userType === 'brand' && selectedProposal?.status === 'sent' && (
             <>

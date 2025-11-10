@@ -430,14 +430,29 @@ app.post('/api/find-matches-for-event', verifyToken, async (req, res) => {
         });
         event.aiProfile = { embeddings: embedding, keywords, summary };
       } catch (error) {
-        console.error('Error creating AI profile for event:', error);
-        // Create a basic fallback profile
-        const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
+        console.warn('Error creating AI profile for event (using fallback):', error.message);
+        // Create enhanced fallback profile
+        const eventText = `${event.name || ''} ${event.description || ''} ${event.type || ''} ${event.theme || ''}`.trim();
+        const { generateFallbackEmbedding } = require('./aiService');
+        const fallbackEmbedding = generateFallbackEmbedding(eventText);
+        const words = eventText.toLowerCase().match(/\b\w{4,}\b/g) || [];
+        const commonWords = ['the', 'that', 'this', 'with', 'from', 'have', 'will', 'your', 'their'];
+        const keywords = [...new Set(words.filter(w => !commonWords.includes(w)))].slice(0, 10);
+        
         event.aiProfile = {
           embeddings: fallbackEmbedding,
-          keywords: [event.type, event.name].filter(Boolean).slice(0, 5),
+          keywords: keywords.length > 0 ? keywords : [event.type, event.name].filter(Boolean).slice(0, 5),
           summary: event.description || 'No summary available'
         };
+        
+        // Save fallback profile to Firestore
+        try {
+          await db.collection('events').doc(eventId).update({
+            aiProfile: event.aiProfile
+          });
+        } catch (updateError) {
+          console.warn('Could not save fallback AI profile:', updateError.message);
+        }
       }
     }
 
@@ -468,14 +483,29 @@ app.post('/api/find-matches-for-event', verifyToken, async (req, res) => {
           });
           brand.aiProfile = { embeddings: embedding, keywords, summary };
         } catch (error) {
-          console.error('Error creating AI profile for brand:', error);
-          // Create a basic fallback profile
-          const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
+          console.warn('Error creating AI profile for brand (using fallback):', error.message);
+          // Create enhanced fallback profile
+          const brandText = `${brand.companyName || ''} ${brand.description || ''} ${brand.productServiceType || ''} ${(brand.marketingGoals || []).join(' ')}`.trim();
+          const { generateFallbackEmbedding } = require('./aiService');
+          const fallbackEmbedding = generateFallbackEmbedding(brandText);
+          const words = brandText.toLowerCase().match(/\b\w{4,}\b/g) || [];
+          const commonWords = ['the', 'that', 'this', 'with', 'from', 'have', 'will', 'your', 'their'];
+          const keywords = [...new Set(words.filter(w => !commonWords.includes(w)))].slice(0, 10);
+          
           brand.aiProfile = {
             embeddings: fallbackEmbedding,
-            keywords: [brand.productServiceType, brand.companyName].filter(Boolean).slice(0, 5),
+            keywords: keywords.length > 0 ? keywords : [brand.productServiceType, brand.companyName].filter(Boolean).slice(0, 5),
             summary: brand.description || 'No summary available'
           };
+          
+          // Save fallback profile to Firestore
+          try {
+            await db.collection('brands').doc(brand.id).update({
+              aiProfile: brand.aiProfile
+            });
+          } catch (updateError) {
+            console.warn('Could not save fallback AI profile:', updateError.message);
+          }
         }
       }
 
@@ -576,19 +606,34 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
           }
         });
         brand.aiProfile = { embeddings: embedding, keywords, summary };
-      } catch (error) {
-        console.error('Error creating AI profile for brand:', error);
-        // Create a basic fallback profile
-        const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
-        brand.aiProfile = {
-          embeddings: fallbackEmbedding,
-          keywords: [brand.productServiceType, brand.companyName].filter(Boolean).slice(0, 5),
-          summary: brand.description || 'No summary available'
-        };
+        } catch (error) {
+          console.warn('Error creating AI profile for brand (using fallback):', error.message);
+          // Create enhanced fallback profile
+          const brandText = `${brand.companyName || ''} ${brand.description || ''} ${brand.productServiceType || ''} ${(brand.marketingGoals || []).join(' ')}`.trim();
+          const { generateFallbackEmbedding } = require('./aiService');
+          const fallbackEmbedding = generateFallbackEmbedding(brandText);
+          const words = brandText.toLowerCase().match(/\b\w{4,}\b/g) || [];
+          const commonWords = ['the', 'that', 'this', 'with', 'from', 'have', 'will', 'your', 'their'];
+          const keywords = [...new Set(words.filter(w => !commonWords.includes(w)))].slice(0, 10);
+          
+          brand.aiProfile = {
+            embeddings: fallbackEmbedding,
+            keywords: keywords.length > 0 ? keywords : [brand.productServiceType, brand.companyName].filter(Boolean).slice(0, 5),
+            summary: brand.description || 'No summary available'
+          };
+          
+          // Save fallback profile to Firestore
+          try {
+            await db.collection('brands').doc(brandId).update({
+              aiProfile: brand.aiProfile
+            });
+          } catch (updateError) {
+            console.warn('Could not save fallback AI profile:', updateError.message);
+          }
+        }
       }
-    }
 
-    // Find all active events
+      // Find all active events
     const eventsSnapshot = await db.collection('events').where('status', '==', 'active').get();
     const matches = [];
 
@@ -615,14 +660,29 @@ app.post('/api/find-matches-for-brand', verifyToken, async (req, res) => {
           });
           event.aiProfile = { embeddings: embedding, keywords, summary };
         } catch (error) {
-          console.error('Error creating AI profile for event:', error);
-          // Create a basic fallback profile
-          const fallbackEmbedding = Array(1536).fill(0).map(() => Math.random() * 0.1);
+          console.warn('Error creating AI profile for event (using fallback):', error.message);
+          // Create enhanced fallback profile
+          const eventText = `${event.name || ''} ${event.description || ''} ${event.type || ''} ${event.theme || ''}`.trim();
+          const { generateFallbackEmbedding } = require('./aiService');
+          const fallbackEmbedding = generateFallbackEmbedding(eventText);
+          const words = eventText.toLowerCase().match(/\b\w{4,}\b/g) || [];
+          const commonWords = ['the', 'that', 'this', 'with', 'from', 'have', 'will', 'your', 'their'];
+          const keywords = [...new Set(words.filter(w => !commonWords.includes(w)))].slice(0, 10);
+          
           event.aiProfile = {
             embeddings: fallbackEmbedding,
-            keywords: [event.type, event.name].filter(Boolean).slice(0, 5),
+            keywords: keywords.length > 0 ? keywords : [event.type, event.name].filter(Boolean).slice(0, 5),
             summary: event.description || 'No summary available'
           };
+          
+          // Save fallback profile to Firestore
+          try {
+            await db.collection('events').doc(event.id).update({
+              aiProfile: event.aiProfile
+            });
+          } catch (updateError) {
+            console.warn('Could not save fallback AI profile:', updateError.message);
+          }
         }
       }
 
