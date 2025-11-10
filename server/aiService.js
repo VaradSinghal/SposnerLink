@@ -1,8 +1,17 @@
+// Load environment variables
+require('dotenv').config();
+
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || ''
-});
+// Initialize OpenAI with API key
+const apiKey = process.env.OPENAI_API_KEY;
+const openai = apiKey ? new OpenAI({ apiKey }) : null;
+
+if (apiKey) {
+  console.log('✅ OpenAI client initialized with API key');
+} else {
+  console.warn('⚠️  OpenAI API key not found. AI features will use fallback methods.');
+}
 
 // Generate embeddings for text
 async function generateEmbedding(text) {
@@ -12,7 +21,7 @@ async function generateEmbedding(text) {
       return Array(1536).fill(0).map(() => Math.random() * 0.1);
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai || !process.env.OPENAI_API_KEY) {
       console.warn('OpenAI API key not set, using fallback embedding');
       // Generate a more meaningful fallback based on text content
       const hash = text.split('').reduce((acc, char) => {
@@ -75,7 +84,7 @@ async function generateSummary(text) {
       };
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai || !process.env.OPENAI_API_KEY) {
       console.warn('OpenAI API key not set, using fallback summary');
       // Better fallback: extract meaningful keywords and create a simple summary
       const words = text.toLowerCase().match(/\b\w{4,}\b/g) || [];
@@ -158,7 +167,8 @@ Create a compelling proposal with:
 
 Format as JSON with: { subject, body, pitchDeck: { sections: [{ title, content }] } }`;
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai || !process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not set, using mock proposal');
       return generateMockProposal(event, brand);
     }
 
@@ -348,7 +358,7 @@ To get better matches:
     }
 
     // Use OpenAI for general questions if API key is available
-    if (process.env.OPENAI_API_KEY) {
+    if (openai && process.env.OPENAI_API_KEY) {
       try {
         const response = await openai.chat.completions.create({
           model: 'gpt-3.5-turbo',

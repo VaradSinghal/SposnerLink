@@ -9,6 +9,8 @@ import {
   CircularProgress,
   Alert,
   Paper,
+  Skeleton,
+  Grow,
 } from '@mui/material';
 import {
   BarChart,
@@ -224,49 +226,85 @@ const Analytics = () => {
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Active Events
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.activeEvents || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={400}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(240, 147, 251, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Active Events
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.activeEvents || 0}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Total Matches
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.totalMatches || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={500}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(79, 172, 254, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Total Matches
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.totalMatches || 0}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Conversion Rate
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.conversionRate?.toFixed(1) || 0}%
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={600}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(67, 233, 123, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Conversion Rate
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.conversionRate?.toFixed(1) || 0}%
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
           </>
         ) : (
           <>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+              <Grow in timeout={300}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(102, 126, 234, 0.4)',
+                  },
+                }}>
                 <CardContent>
                   <Typography color="inherit" gutterBottom variant="body2">
                     Total Matches
@@ -279,42 +317,69 @@ const Analytics = () => {
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Viewed Proposals
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.viewedProposals || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={400}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(240, 147, 251, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Viewed Proposals
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.viewedProposals || 0}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Accepted Proposals
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.acceptedProposals || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={500}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(79, 172, 254, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Accepted Proposals
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.acceptedProposals || 0}
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', color: 'white' }}>
-                <CardContent>
-                  <Typography color="inherit" gutterBottom variant="body2">
-                    Response Rate
-                  </Typography>
-                  <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
-                    {stats?.responseRate?.toFixed(1) || 0}%
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grow in timeout={600}>
+                <Card sx={{ 
+                  background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(67, 233, 123, 0.4)',
+                  },
+                }}>
+                  <CardContent>
+                    <Typography color="inherit" gutterBottom variant="body2">
+                      Response Rate
+                    </Typography>
+                    <Typography variant="h3" sx={{ fontWeight: 'bold' }}>
+                      {stats?.responseRate?.toFixed(1) || 0}%
+                    </Typography>
+                  </CardContent>
+                </Card>
               </Grow>
             </Grid>
           </>

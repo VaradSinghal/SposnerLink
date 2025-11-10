@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Box } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -18,6 +19,7 @@ import Analytics from './pages/Analytics';
 import PrivateRoute from './components/PrivateRoute';
 import Chatbot from './components/Chatbot';
 import PageTransition from './components/PageTransition';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const theme = createTheme({
   palette: {
@@ -115,17 +117,18 @@ const theme = createTheme({
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Box sx={{ 
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
-            transition: 'background 0.3s ease',
-          }}>
-          <Navbar />
-          <Routes>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <Router>
+            <Box sx={{ 
+              minHeight: '100vh',
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)',
+              transition: 'background 0.3s ease',
+            }}>
+            <Navbar />
+            <Routes>
             <Route path="/" element={<PageTransition><Home /></PageTransition>} />
             <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
             <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
@@ -211,11 +214,12 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          <Chatbot />
-          </Box>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+            <Chatbot />
+            </Box>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

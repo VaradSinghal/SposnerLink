@@ -230,6 +230,7 @@ const Dashboard = () => {
                   </Typography>
                 </CardContent>
               </Card>
+              </Grow>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <Grow in timeout={400}>

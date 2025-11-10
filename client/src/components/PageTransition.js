@@ -4,7 +4,7 @@ import { Box, Fade, Grow } from '@mui/material';
 const PageTransition = ({ children, fadeIn = true, grow = false }) => {
   if (grow) {
     return (
-      <Grow in timeout={600}>
+      <Grow in={true} timeout={600}>
         <Box sx={{ 
           animation: 'fadeInUp 0.4s ease-out',
           '@keyframes fadeInUp': {
@@ -26,7 +26,7 @@ const PageTransition = ({ children, fadeIn = true, grow = false }) => {
 
   if (fadeIn) {
     return (
-      <Fade in timeout={400}>
+      <Fade in={true} timeout={400}>
         <Box sx={{ 
           animation: 'fadeIn 0.4s ease-out',
           '@keyframes fadeIn': {

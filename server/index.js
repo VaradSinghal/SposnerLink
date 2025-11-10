@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
@@ -6,6 +9,14 @@ const { generateEmbedding, cosineSimilarity, generateSummary, generateProposal }
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Log API key status (without exposing the key)
+if (process.env.OPENAI_API_KEY) {
+  console.log('✅ OpenAI API key is configured');
+} else {
+  console.warn('⚠️  OpenAI API key not found. AI features will use fallback methods.');
+  console.warn('   To enable full AI features, set OPENAI_API_KEY in your .env file or environment variables.');
+}
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -746,7 +757,12 @@ app.post('/api/chat', verifyToken, async (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'AI Matching Service is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'AI Matching Service is running',
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
+    firestoreConfigured: !!db
+  });
 });
 
 const PORT = process.env.PORT || 5000;
