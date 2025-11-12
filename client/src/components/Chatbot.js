@@ -52,13 +52,18 @@ What would you like to know?`,
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: 'user', content: input.trim() };
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessageText = input.trim();
+    const userMessage = { role: 'user', content: userMessageText };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await chatWithAI(input.trim(), user);
+      // Send conversation history (excluding the welcome message)
+      const conversationHistory = updatedMessages.filter(msg => msg.role !== 'assistant' || !msg.content.includes('Hello! I\'m your AI assistant'));
+      
+      const response = await chatWithAI(userMessageText, user, conversationHistory);
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: response.message },
@@ -90,6 +95,10 @@ What would you like to know?`,
     'How do I create an event?',
     'How do I find sponsors?',
     'What makes a good profile?',
+    'How do I send a proposal?',
+    'What is the relevance score?',
+    'How do I optimize my profile?',
+    'Can I edit my event after creating it?',
   ];
 
   return (

@@ -56,19 +56,23 @@ const MatchesPage = () => {
           allMatches = matchResults.flat();
         }
         
-        // Populate brands - but keep the brandId as ID for queries
+        // Populate both brands and events - but keep IDs for queries
         const populatedMatches = await Promise.all(
           allMatches.map(async (match) => {
-            const populated = await Matches.populateBrand(match);
-            // Keep both the populated brand object and the original ID
+            let populated = await Matches.populateBrand(match);
+            populated = await Matches.populateEvent(populated);
+            // Keep both the populated objects and the original IDs
             return {
               ...populated,
-              brandIdData: populated.brandId, // Full brand data
-              brandId: typeof populated.brandId === 'object' ? populated.brandId.id : populated.brandId // Keep ID for queries
+              brandIdData: typeof populated.brandId === 'object' ? populated.brandId : null, // Full brand data
+              brandId: typeof populated.brandId === 'object' ? populated.brandId.id : populated.brandId, // Keep ID for queries
+              eventIdData: typeof populated.eventId === 'object' ? populated.eventId : null, // Full event data
+              eventId: typeof populated.eventId === 'object' ? populated.eventId.id : populated.eventId // Keep ID for queries
             };
           })
         );
         
+        console.log('Organizer matches fetched:', populatedMatches.length, populatedMatches);
         setMatches(populatedMatches);
       } else {
         const brand = await Brands.findByUserId(user.id);
@@ -371,6 +375,9 @@ const MatchesPage = () => {
 
                   {user?.userType === 'organizer' ? (
                     <>
+                      <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                        Event: {(match.eventIdData || match.eventId)?.name || 'Unknown Event'}
+                      </Typography>
                       <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                         {(match.brandIdData || match.brandId)?.companyName || 'Unknown Brand'}
                       </Typography>

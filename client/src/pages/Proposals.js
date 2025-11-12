@@ -23,6 +23,23 @@ import { format } from 'date-fns';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { Grow, Fade, Skeleton } from '@mui/material';
 
+// Helper function to safely format dates
+const formatDate = (dateValue, formatString = 'MMM dd, yyyy') => {
+  if (!dateValue) return null;
+  try {
+    // If it's already a Date object, use it directly
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    return format(date, formatString);
+  } catch (error) {
+    console.error('Error formatting date:', error, dateValue);
+    return null;
+  }
+};
+
 const ProposalsPage = () => {
   const { user } = useAuth();
   const [proposals, setProposals] = useState([]);
@@ -39,16 +56,18 @@ const ProposalsPage = () => {
 
   const fetchProposals = async () => {
     try {
+      setLoading(true);
       let proposalsData = [];
       
       if (user?.userType === 'organizer') {
-        // Organizers see proposals sent to their events (by eventId) OR sent by them (by organizerId)
-        const proposalsToEvents = await Proposals.find({ organizerId: user.id });
-        
-        // Also get proposals sent to events they own
+        console.log('Fetching proposals for organizer:', user.id);
+        // Organizers see ONLY proposals RECEIVED from sponsors (brand_to_event type)
+        // Get all events owned by this organizer
         const userEvents = await Events.find({ organizerId: user.id });
+        console.log('Organizer events:', userEvents.length);
         const eventIds = userEvents.map(e => e.id);
         
+        // Get all proposals sent to events owned by this organizer
         let proposalsToMyEvents = [];
         if (eventIds.length > 0) {
           for (const eventId of eventIds) {
@@ -56,17 +75,25 @@ const ProposalsPage = () => {
             proposalsToMyEvents = [...proposalsToMyEvents, ...eventProposals];
           }
         }
+        console.log('All proposals sent to organizer events:', proposalsToMyEvents.length);
         
-        // Combine and deduplicate
-        const allProposals = [...proposalsToEvents, ...proposalsToMyEvents];
-        const uniqueProposals = allProposals.filter((proposal, index, self) =>
-          index === self.findIndex(p => p.id === proposal.id)
-        );
-        proposalsData = uniqueProposals;
+        // Filter to only show proposals RECEIVED from sponsors (brand_to_event)
+        // These are proposals sent by brands to the organizer's events
+        proposalsData = proposalsToMyEvents.filter(proposal => {
+          // Only show brand-initiated proposals (proposals received from sponsors)
+          // proposalType === 'brand_to_event' means the brand sent it to the event
+          // If proposalType is undefined or null, it might be an old proposal - check if organizerId doesn't match (meaning brand sent it)
+          const isBrandProposal = proposal.proposalType === 'brand_to_event' || 
+            (proposal.proposalType !== 'organizer_to_brand' && proposal.organizerId !== user.id);
+          return isBrandProposal;
+        });
+        
+        console.log('Proposals received from sponsors:', proposalsData.length);
       } else {
         const brand = await Brands.findByUserId(user.id);
         if (brand) {
           proposalsData = await Proposals.find({ brandId: brand.id });
+          console.log('Proposals for brand:', proposalsData.length);
         }
       }
 
@@ -80,6 +107,7 @@ const ProposalsPage = () => {
         })
       );
 
+      console.log('Populated proposals:', populatedProposals);
       setProposals(populatedProposals);
     } catch (error) {
       setError('Failed to fetch proposals');
@@ -188,7 +216,7 @@ const ProposalsPage = () => {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {user?.userType === 'organizer'
-              ? 'Generate proposals from your matches to get started!'
+              ? 'Proposals from sponsors will appear here when they send proposals to your events.'
               : 'Proposals will appear here when organizers send them to you.'}
           </Typography>
         </Paper>
@@ -277,9 +305,9 @@ const ProposalsPage = () => {
                     </Typography>
                   )}
 
-                  {proposal.sentAt && (
+                  {proposal.sentAt && formatDate(proposal.sentAt) && (
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                      Sent: {format(new Date(proposal.sentAt), 'MMM dd, yyyy')}
+                      Sent: {formatDate(proposal.sentAt)}
                     </Typography>
                   )}
                 </CardContent>
@@ -410,19 +438,19 @@ const ProposalsPage = () => {
                   <Typography variant="body2" color="text.secondary">
                     <strong>Status:</strong> {selectedProposal.status || 'draft'}
                   </Typography>
-                  {selectedProposal.sentAt && (
+                  {selectedProposal.sentAt && formatDate(selectedProposal.sentAt, 'MMM dd, yyyy • h:mm a') && (
                     <Typography variant="body2" color="text.secondary">
-                      <strong>Sent:</strong> {format(new Date(selectedProposal.sentAt), 'MMM dd, yyyy • h:mm a')}
+                      <strong>Sent:</strong> {formatDate(selectedProposal.sentAt, 'MMM dd, yyyy • h:mm a')}
                     </Typography>
                   )}
-                  {selectedProposal.viewedAt && (
+                  {selectedProposal.viewedAt && formatDate(selectedProposal.viewedAt, 'MMM dd, yyyy • h:mm a') && (
                     <Typography variant="body2" color="text.secondary">
-                      <strong>Viewed:</strong> {format(new Date(selectedProposal.viewedAt), 'MMM dd, yyyy • h:mm a')}
+                      <strong>Viewed:</strong> {formatDate(selectedProposal.viewedAt, 'MMM dd, yyyy • h:mm a')}
                     </Typography>
                   )}
-                  {selectedProposal.respondedAt && (
+                  {selectedProposal.respondedAt && formatDate(selectedProposal.respondedAt, 'MMM dd, yyyy • h:mm a') && (
                     <Typography variant="body2" color="text.secondary">
-                      <strong>Responded:</strong> {format(new Date(selectedProposal.respondedAt), 'MMM dd, yyyy • h:mm a')}
+                      <strong>Responded:</strong> {formatDate(selectedProposal.respondedAt, 'MMM dd, yyyy • h:mm a')}
                     </Typography>
                   )}
                 </Box>

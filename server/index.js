@@ -836,7 +836,15 @@ app.post('/api/chat', verifyToken, async (req, res) => {
     }
 
     try {
-      const response = await generateChatResponse(message, userType || 'organizer', userContext);
+      // Get conversation history from request body
+      const conversationHistory = req.body.conversationHistory || [];
+      
+      const response = await generateChatResponse(
+        message, 
+        userType || 'organizer', 
+        userContext,
+        conversationHistory
+      );
       res.json({ message: response });
     } catch (chatError) {
       console.error('Error generating chat response:', chatError);

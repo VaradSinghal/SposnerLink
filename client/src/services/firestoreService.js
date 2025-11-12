@@ -534,14 +534,35 @@ export const Proposals = {
         q = query(q, where('status', '==', filters.status));
       }
 
-      // Try to order by createdAt, but if it fails (no index), just get results
+      // Try to order by createdAt, but if it fails (no index), just get results without ordering
+      let snapshot;
       try {
         q = query(q, orderBy('createdAt', 'desc'));
+        snapshot = await getDocs(q);
       } catch (e) {
-        console.warn('Could not order by createdAt, index may be needed');
+        // If ordering fails (no index), try without ordering
+        console.warn('Could not order by createdAt, index may be needed. Fetching without order:', e.message);
+        try {
+          // Remove orderBy and try again
+          let qWithoutOrder = query(proposalsCollection);
+          if (filters.organizerId) {
+            qWithoutOrder = query(qWithoutOrder, where('organizerId', '==', filters.organizerId));
+          }
+          if (filters.brandId) {
+            qWithoutOrder = query(qWithoutOrder, where('brandId', '==', filters.brandId));
+          }
+          if (filters.eventId) {
+            qWithoutOrder = query(qWithoutOrder, where('eventId', '==', filters.eventId));
+          }
+          if (filters.status) {
+            qWithoutOrder = query(qWithoutOrder, where('status', '==', filters.status));
+          }
+          snapshot = await getDocs(qWithoutOrder);
+        } catch (error2) {
+          console.error('Error fetching proposals without order:', error2);
+          return [];
+        }
       }
-      
-      const snapshot = await getDocs(q);
       let results = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return { id: docSnap.id, ...data, createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };

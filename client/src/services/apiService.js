@@ -67,13 +67,17 @@ export async function generateProposal(eventId, brandId) {
 }
 
 // Chat with AI assistant
-export async function chatWithAI(message, user) {
+export async function chatWithAI(message, user, conversationHistory = []) {
   return apiRequest('/api/chat', {
     method: 'POST',
     body: JSON.stringify({ 
       message,
       userType: user?.userType || 'organizer',
-      userId: user?.id 
+      userId: user?.id,
+      conversationHistory: conversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content || msg.message
+      }))
     }),
   });
 }

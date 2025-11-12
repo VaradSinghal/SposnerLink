@@ -315,56 +315,90 @@ The ${event.name} Team`,
   };
 }
 
-// Generate chat response for AI assistant
-async function generateChatResponse(message, userType, userContext) {
+// Generate chat response for AI assistant with conversation history
+async function generateChatResponse(message, userType, userContext, conversationHistory = [], retries = 3) {
   try {
     const lowerMessage = message.toLowerCase();
     
-    // Context-aware responses based on user type and message
-    let systemPrompt = `You are a helpful AI assistant for a sponsorship matchmaking platform called SponsorLink. 
-You help ${userType === 'organizer' ? 'event organizers' : 'brands'} find sponsorship opportunities and understand how the platform works.
+    // Enhanced system prompt for more human-like conversation
+    let systemPrompt = `You are a friendly and knowledgeable AI assistant for SponsorLink, a sponsorship matchmaking platform. 
+You help ${userType === 'organizer' ? 'event organizers find sponsors for their events' : 'brands find events to sponsor'}.
 
-Key features you can help with:
-- Finding matching events or brands
-- Understanding how the AI matching system works
-- Creating and optimizing profiles
-- Understanding sponsorship opportunities
+Your personality:
+- Be conversational, warm, and approachable like a helpful colleague
+- Use natural language, not robotic responses
+- Show enthusiasm about helping users succeed
+- Ask follow-up questions when appropriate
+- Provide specific, actionable advice
+- Be concise but thorough
+
+You can help with:
+- Finding matching events or brands using AI-powered matching
+- Understanding how the matching algorithm works (semantic similarity, audience overlap, etc.)
+- Creating and optimizing profiles/events for better matches
+- Understanding sponsorship opportunities and best practices
 - Platform navigation and features
+- General questions about sponsorship, events, and marketing
+- Troubleshooting and support
 
-Be friendly, concise, and helpful. Provide actionable advice.`;
+FAQ Topics you should know:
+- How matching works: Uses AI embeddings, semantic similarity, audience overlap, category fit, location, budget, and marketing goals
+- Creating events/profiles: Detailed steps with emphasis on completeness for better matches
+- Finding sponsors/events: Process of using AI matching and viewing results
+- Proposals: AI-generated sponsorship pitches, how to send/receive/respond
+- Profile optimization: Tips for better matching scores
+- Platform features: Matches, Proposals, Events, Dashboard, Feed pages
+
+Remember: You're having a conversation, not just answering questions. Be natural and engaging!`;
 
     // Add user context if available
     if (userContext && Object.keys(userContext).length > 0) {
       if (userType === 'organizer') {
-        systemPrompt += `\n\nThe user is an organizer. Their profile: ${JSON.stringify(userContext).substring(0, 200)}`;
+        systemPrompt += `\n\nThe user is an organizer. Their profile: ${JSON.stringify(userContext).substring(0, 300)}`;
       } else if (userType === 'brand') {
-        systemPrompt += `\n\nThe user is a brand. Company: ${userContext.companyName || 'N/A'}, Type: ${userContext.productServiceType || 'N/A'}`;
+        systemPrompt += `\n\nThe user is a brand. Company: ${userContext.companyName || 'N/A'}, Type: ${userContext.productServiceType || 'N/A'}, Description: ${(userContext.description || '').substring(0, 200)}`;
       }
     }
 
     // Check if OpenAI is available - if not, use fallback
     if (!openai || !process.env.OPENAI_API_KEY) {
       console.warn('OpenAI API key not set, using fallback response');
-      return getFallbackChatResponse(lowerMessage, userType);
+      return getFallbackChatResponse(lowerMessage, userType, conversationHistory);
     }
+
+    // Build messages array with conversation history
+    const messages = [
+      {
+        role: 'system',
+        content: systemPrompt
+      }
+    ];
+
+    // Add conversation history (last 10 messages to keep context manageable)
+    const recentHistory = conversationHistory.slice(-10);
+    for (const msg of recentHistory) {
+      messages.push({
+        role: msg.role || 'user',
+        content: msg.content || msg.message
+      });
+    }
+
+    // Add current message
+    messages.push({
+      role: 'user',
+      content: message
+    });
 
     // Try to use OpenAI API first
     try {
-      console.log('Calling OpenAI API for chat response...');
+      console.log('Calling OpenAI API for chat response with conversation history...');
       const response = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
+        messages: messages,
+        temperature: 0.8, // Slightly higher for more natural conversation
+        max_tokens: 600, // Increased for more detailed responses
+        presence_penalty: 0.6, // Encourage variety in responses
+        frequency_penalty: 0.3
       });
 
       if (!response.choices || !response.choices[0] || !response.choices[0].message) {
@@ -380,21 +414,21 @@ Be friendly, concise, and helpful. Provide actionable advice.`;
         const waitTime = Math.pow(2, 3 - retries) * 1000; // Exponential backoff: 1s, 2s, 4s
         console.warn(`Rate limit hit, retrying in ${waitTime}ms... (${retries} retries left)`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        return generateChatResponse(message, userType, userContext, retries - 1);
+        return generateChatResponse(message, userType, userContext, conversationHistory, retries - 1);
       }
       // If API fails, use fallback
       console.warn('OpenAI API failed, using fallback response:', apiError.message);
-      return getFallbackChatResponse(lowerMessage, userType);
+      return getFallbackChatResponse(lowerMessage, userType, conversationHistory);
     }
   } catch (error) {
     console.error('Error generating chat response:', error);
     // Return fallback response
-    return getFallbackChatResponse(message.toLowerCase(), userType);
+    return getFallbackChatResponse(message.toLowerCase(), userType, conversationHistory);
   }
 }
 
 // Get fallback chat response when OpenAI is not available
-function getFallbackChatResponse(lowerMessage, userType) {
+function getFallbackChatResponse(lowerMessage, userType, conversationHistory = []) {
   // Handle specific questions
   if (lowerMessage.includes('how does matching work') || lowerMessage.includes('how does the matching system work')) {
     return `Our AI-powered matching system uses multiple factors to find the best matches:
@@ -469,7 +503,86 @@ The AI analyzes your profile and finds events that align with your goals!`;
 Proposals are automatically generated using AI to highlight the best match factors!`;
   }
   
-  // Default helpful response
+  if (lowerMessage.includes('relevance score') || lowerMessage.includes('score') || lowerMessage.includes('match score')) {
+    return `The relevance score (0-100) shows how well an event and brand match each other. It's calculated using:
+
+• **Semantic Similarity** (25 points): How well descriptions align using AI
+• **Category Fit** (20 points): Event type matches brand preferences
+• **Audience Overlap** (20 points): Target audiences align
+• **Location Fit** (15 points): Geographic preferences match
+• **Budget Fit** (10 points): Budget ranges align
+• **Marketing Goals** (5 points): Objectives match
+• **Event Scale** (5 points): Event size preferences match
+
+Scores above 30 are shown as matches. Higher scores = better alignment!`;
+  }
+  
+  if (lowerMessage.includes('optimize') || lowerMessage.includes('improve') || lowerMessage.includes('better match')) {
+    return `To improve your matching scores:
+
+**For Organizers:**
+• Write detailed event descriptions with keywords
+• Specify your target audience clearly (age, interests, demographics)
+• Set realistic budget ranges
+• Choose appropriate event categories
+• Add location details
+• Include marketing goals and objectives
+
+**For Brands:**
+• Complete all profile sections thoroughly
+• Describe your company and products/services in detail
+• Specify your target audience clearly
+• Set your preferred event categories
+• Define your marketing goals
+• Set location preferences
+
+The more detailed your profile, the better the AI can match you!`;
+  }
+  
+  if (lowerMessage.includes('edit') || lowerMessage.includes('update') || lowerMessage.includes('change')) {
+    return `Yes! You can edit your ${userType === 'organizer' ? 'events' : 'profile'} at any time:
+
+**For Organizers:**
+• Go to the Events page
+• Click on an event to view details
+• Click "Edit" to modify event information
+• Updates will improve future matches
+
+**For Brands:**
+• Go to your Profile page
+• Click "Edit Profile"
+• Update any information
+• Changes will be reflected in new matches
+
+Remember: Editing your ${userType === 'organizer' ? 'event' : 'profile'} may change your match scores, so you might want to run "Find Matches" again after making changes!`;
+  }
+  
+  if (lowerMessage.includes('faq') || lowerMessage.includes('frequently asked') || lowerMessage.includes('common questions')) {
+    return `Here are some frequently asked questions:
+
+**Matching:**
+• How does matching work? - Uses AI to analyze multiple factors
+• What is a relevance score? - A 0-100 score showing match quality
+• How do I improve my matches? - Complete your profile with detailed information
+
+**Creating Content:**
+• How do I create an event? - Go to Events page → Create Event
+• How do I create a profile? - Go to Profile page and fill in details
+• Can I edit after creating? - Yes, you can edit anytime
+
+**Proposals:**
+• How do I send a proposal? - From Matches page or Event detail page
+• What are proposals? - AI-generated sponsorship pitches
+• How do I respond to proposals? - From the Proposals page
+
+**Platform:**
+• What pages are available? - Dashboard, Events, Matches, Proposals, Feed
+• How do I navigate? - Use the navigation bar at the top
+
+Feel free to ask me about any of these topics in more detail!`;
+  }
+  
+  // Default helpful response - more conversational
   return `I'm here to help you with ${userType === 'organizer' ? 'event sponsorship' : 'finding sponsorship opportunities'}!
 
 I can help you with:
@@ -477,9 +590,10 @@ I can help you with:
 • Creating and optimizing your ${userType === 'organizer' ? 'events' : 'profile'}
 • Finding ${userType === 'organizer' ? 'sponsors' : 'events to sponsor'}
 • Sending and managing proposals
-• Platform navigation
+• Platform navigation and features
+• General questions about sponsorship
 
-What would you like to know more about?`;
+What would you like to know? Feel free to ask me anything!`;
 }
 
 module.exports = {
