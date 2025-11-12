@@ -316,7 +316,16 @@ The ${event.name} Team`,
 }
 
 // Generate chat response for AI assistant with conversation history
-async function generateChatResponse(message, userType, userContext, conversationHistory = [], retries = 3) {
+async function generateChatResponse(message, userType, userContext, conversationHistory, retries) {
+  // Ensure all parameters are properly defined with defaults
+  if (!message) {
+    throw new Error('Message is required');
+  }
+  userType = userType || 'organizer';
+  userContext = userContext || {};
+  conversationHistory = conversationHistory || [];
+  retries = (typeof retries === 'number' && retries >= 0) ? retries : 3;
+  
   try {
     const lowerMessage = message.toLowerCase();
     

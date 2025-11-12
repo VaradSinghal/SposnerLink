@@ -103,25 +103,45 @@ export const Events = {
         q = query(q, where('organizerId', '==', filters.organizerId));
       }
 
-      // Try to order by createdAt, but if it fails (no index), just get results
+      // Try to order by createdAt, but if it fails (no index), fetch without ordering
+      let snapshot;
       try {
         q = query(q, orderBy('createdAt', 'desc'));
+        if (filters.limit) {
+          q = query(q, limit(filters.limit));
+        }
+        snapshot = await getDocs(q);
       } catch (e) {
-        // If orderBy fails, continue without it
-        console.warn('Could not order by createdAt, index may be needed');
-      }
-      
-      if (filters.limit) {
-        q = query(q, limit(filters.limit));
+        // If ordering fails (no index), try without ordering
+        console.warn('Could not order by createdAt, index may be needed. Fetching without order:', e.message);
+        try {
+          // Rebuild query without orderBy
+          let qWithoutOrder = query(eventsCollection);
+          if (filters.status) {
+            qWithoutOrder = query(qWithoutOrder, where('status', '==', filters.status));
+          }
+          if (filters.type) {
+            qWithoutOrder = query(qWithoutOrder, where('type', '==', filters.type));
+          }
+          if (filters.organizerId) {
+            qWithoutOrder = query(qWithoutOrder, where('organizerId', '==', filters.organizerId));
+          }
+          if (filters.limit) {
+            qWithoutOrder = query(qWithoutOrder, limit(filters.limit));
+          }
+          snapshot = await getDocs(qWithoutOrder);
+        } catch (error2) {
+          console.error('Error fetching events without order:', error2);
+          return [];
+        }
       }
 
-      const snapshot = await getDocs(q);
       let results = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
         return { id: docSnap.id, ...data, createdAt: toDate(data.createdAt), updatedAt: toDate(data.updatedAt) };
       });
       
-      // Sort manually if orderBy failed
+      // Sort manually if orderBy failed or wasn't applied
       if (results.length > 0 && results[0].createdAt) {
         results.sort((a, b) => {
           const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -130,6 +150,7 @@ export const Events = {
         });
       }
       
+      console.log(`Events.find() - Found ${results.length} events with filters:`, filters);
       return results;
     } catch (error) {
       console.error('Error finding events:', error);

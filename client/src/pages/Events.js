@@ -66,8 +66,14 @@ const EventsPage = () => {
       }
       
       console.log('Events - User type:', user?.userType);
+      console.log('Events - User ID:', user?.id);
       console.log('Events - Found events:', eventsData.length);
-      console.log('Events - Event statuses:', eventsData.map(e => ({ id: e.id, status: e.status, name: e.name })));
+      console.log('Events - Event details:', eventsData.map(e => ({ 
+        id: e.id, 
+        status: e.status, 
+        name: e.name, 
+        organizerId: e.organizerId 
+      })));
       setEvents(eventsData || []);
     } catch (error) {
       setError('Failed to fetch events');
