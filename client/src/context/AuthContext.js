@@ -20,6 +20,66 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper function to convert Firebase auth errors to user-friendly messages
+const getAuthErrorMessage = (error) => {
+  // Extract error code from Firebase error
+  const errorCode = error?.code || error?.message || '';
+  
+  // Map Firebase error codes to user-friendly messages
+  const errorMessages = {
+    // Authentication errors
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/user-disabled': 'This account has been disabled. Please contact support.',
+    'auth/user-not-found': 'No account found with this email address.',
+    'auth/wrong-password': 'Incorrect password. Please try again.',
+    'auth/invalid-credential': 'Invalid email or password. Please check your credentials and try again.',
+    'auth/invalid-verification-code': 'Invalid verification code. Please try again.',
+    'auth/invalid-verification-id': 'Invalid verification ID. Please try again.',
+    
+    // Registration errors
+    'auth/email-already-in-use': 'An account with this email already exists. Please sign in instead.',
+    'auth/weak-password': 'Password is too weak. Please use at least 6 characters.',
+    'auth/operation-not-allowed': 'This sign-in method is not enabled. Please contact support.',
+    
+    // Network errors
+    'auth/network-request-failed': 'Network error. Please check your internet connection and try again.',
+    'auth/too-many-requests': 'Too many failed attempts. Please wait a few minutes and try again.',
+    
+    // Other errors
+    'auth/requires-recent-login': 'For security reasons, please sign out and sign in again.',
+    'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
+    'auth/cancelled-popup-request': 'Only one popup request is allowed at a time.',
+    'auth/popup-blocked': 'Popup was blocked by your browser. Please allow popups and try again.',
+    'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
+    'auth/credential-already-in-use': 'This credential is already associated with a different account.',
+    'auth/operation-not-allowed': 'This operation is not allowed. Please contact support.',
+    'auth/timeout': 'The operation timed out. Please try again.',
+    'auth/unavailable': 'The service is temporarily unavailable. Please try again later.',
+    'auth/internal-error': 'An internal error occurred. Please try again later.',
+  };
+
+  // Check if error code matches any known error
+  for (const [code, message] of Object.entries(errorMessages)) {
+    if (errorCode.includes(code) || errorCode.includes(code.replace('auth/', ''))) {
+      return message;
+    }
+  }
+
+  // If it's a Firebase error but code not recognized, extract a generic message
+  if (errorCode.includes('Firebase:') || errorCode.includes('auth/')) {
+    // Try to extract a more readable message
+    const match = errorCode.match(/auth\/([a-z-]+)/i);
+    if (match) {
+      const errorType = match[1].replace(/-/g, ' ');
+      return `Authentication error: ${errorType}. Please try again or contact support if the problem persists.`;
+    }
+    return 'An authentication error occurred. Please try again.';
+  }
+
+  // For non-Firebase errors, return the message or a generic error
+  return error?.message || 'An unexpected error occurred. Please try again.';
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +233,31 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return {
+          success: false,
+          message: 'Please enter a valid email address.'
+        };
+      }
+
+      // Validate password length
+      if (!password || password.length < 6) {
+        return {
+          success: false,
+          message: 'Password must be at least 6 characters long.'
+        };
+      }
+
+      // Validate name
+      if (!name || name.trim().length < 2) {
+        return {
+          success: false,
+          message: 'Please enter your full name (at least 2 characters).'
+        };
+      }
+
       // Set registration flag to prevent duplicate creation in onAuthStateChanged
       isRegisteringRef.current = true;
 
@@ -248,19 +333,35 @@ export const AuthProvider = ({ children }) => {
       isRegisteringRef.current = false; // Clear flag on error
       return {
         success: false,
-        message: error.message || 'Registration failed'
+        message: getAuthErrorMessage(error)
       };
     }
   };
 
   const login = async (email, password) => {
     try {
+      // Validate email format
+      if (!email || !email.trim()) {
+        return {
+          success: false,
+          message: 'Please enter your email address.'
+        };
+      }
+
+      // Validate password
+      if (!password || !password.trim()) {
+        return {
+          success: false,
+          message: 'Please enter your password.'
+        };
+      }
+
       await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        message: error.message || 'Login failed'
+        message: getAuthErrorMessage(error)
       };
     }
   };
