@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -8,7 +8,6 @@ import {
   CardActions,
   Button,
   Chip,
-  CircularProgress,
   Alert,
   Grid,
   Dialog,
@@ -21,7 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { Proposals, Brands, Matches, Events } from '../services/firestoreService';
 import { format } from 'date-fns';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { Grow, Fade, Skeleton } from '@mui/material';
+import { Grow, Skeleton } from '@mui/material';
 
 // Helper function to safely format dates
 const formatDate = (dateValue, formatString = 'MMM dd, yyyy') => {
@@ -48,13 +47,7 @@ const ProposalsPage = () => {
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchProposals();
-    }
-  }, [user]);
-
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     try {
       setLoading(true);
       let proposalsData = [];
@@ -115,7 +108,13 @@ const ProposalsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProposals();
+    }
+  }, [user, fetchProposals]);
 
   const handleViewProposal = (proposal) => {
     setSelectedProposal(proposal);

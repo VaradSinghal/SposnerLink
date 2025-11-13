@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -8,7 +8,6 @@ import {
   CardActions,
   Button,
   Chip,
-  CircularProgress,
   Alert,
   Grid,
   LinearProgress,
@@ -23,7 +22,7 @@ import { Matches, Events, Brands, Proposals } from '../services/firestoreService
 import { findMatchesForEvent, findMatchesForBrand, generateProposal as generateProposalAPI } from '../services/apiService';
 import { Link } from 'react-router-dom';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { Grow, Fade, Skeleton } from '@mui/material';
+import { Grow, Skeleton } from '@mui/material';
 import { MatchCardSkeleton } from '../components/SkeletonLoader';
 
 const MatchesPage = () => {
@@ -36,13 +35,7 @@ const MatchesPage = () => {
   const [findingMatches, setFindingMatches] = useState(false);
   const [hasEvents, setHasEvents] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchMatches();
-    }
-  }, [user]);
-
-  const fetchMatches = async () => {
+  const fetchMatches = useCallback(async () => {
     try {
       if (user?.userType === 'organizer') {
         const events = await Events.find({ organizerId: user.id });
@@ -107,7 +100,13 @@ const MatchesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchMatches();
+    }
+  }, [user, fetchMatches]);
 
   const handleFindMatches = async () => {
     setFindingMatches(true);
