@@ -217,7 +217,7 @@ const ProposalsPage = () => {
           <Typography variant="body2" color="text.secondary">
             {user?.userType === 'organizer'
               ? 'Proposals from sponsors will appear here when they send proposals to your events.'
-              : 'Proposals will appear here when organizers send them to you.'}
+              : 'Proposals you send to organizers and proposals you receive from organizers will appear here.'}
           </Typography>
         </Paper>
       ) : (
@@ -337,7 +337,7 @@ const ProposalsPage = () => {
                       Review & Send
                     </Button>
                   )}
-                  {user?.userType === 'brand' && proposal.status === 'sent' && (
+                  {user?.userType === 'brand' && proposal.status === 'sent' && proposal.proposalType === 'organizer_to_brand' && (
                     <>
                       <Button
                         size="small"
@@ -370,6 +370,14 @@ const ProposalsPage = () => {
                         Decline
                       </Button>
                     </>
+                  )}
+                  {user?.userType === 'brand' && proposal.proposalType === 'brand_to_event' && (
+                    <Chip 
+                      label="Sent by You" 
+                      color="info" 
+                      size="small"
+                      sx={{ ml: 1 }}
+                    />
                   )}
                   {proposal.status === 'accepted' && (
                     <Chip 
@@ -512,7 +520,7 @@ const ProposalsPage = () => {
               </Button>
             </>
           )}
-          {user?.userType === 'brand' && selectedProposal?.status === 'sent' && (
+          {user?.userType === 'brand' && selectedProposal?.status === 'sent' && selectedProposal?.proposalType === 'organizer_to_brand' && (
             <>
               <Button
                 color="success"
